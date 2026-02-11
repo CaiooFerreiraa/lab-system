@@ -111,7 +111,7 @@ export default function TestRegister() {
           fk_funcionario_matricula: fkFuncionario,
           fk_modelo_cod_modelo: parseInt(fkModelo),
           fk_material: fkMaterial,
-          fk_cod_setor: isNaN(productSetor) ? (sectorList.find(s => s.nome === productSetor)?.id) : parseInt(productSetor),
+          fk_cod_setor: productSetor,
           tipo: productType,
           status: "Pendente",
         },

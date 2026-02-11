@@ -114,6 +114,7 @@ export default class TestModel extends BaseModel {
   }
 
   async #getTipoByNome(identifier) {
+    if (!identifier) throw new Error("Tipo de teste não informado.");
     const result = await this.db`
       SELECT cod_tipo FROM lab_system.tipo 
       WHERE nome::text = ${identifier} OR cod_tipo::text = ${identifier}::text
@@ -124,6 +125,7 @@ export default class TestModel extends BaseModel {
   }
 
   async #getSetorByNome(identifier) {
+    if (!identifier) throw new Error("Setor não informado.");
     const result = await this.db`
       SELECT id FROM lab_system.setor 
       WHERE nome = ${identifier} OR id::text = ${identifier}::text

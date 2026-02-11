@@ -21,10 +21,12 @@ export default class ProductModel extends BaseModel {
   }
 
   async #getSectorId(setor) {
+    if (!setor) throw new Error("Setor não informado.");
+
     const result = await this.db`
       SELECT id
       FROM lab_system.setor
-      WHERE nome = ${setor};
+      WHERE nome = ${setor} OR id::text = ${setor}::text;
     `;
 
     if (result.length === 0) {
@@ -63,7 +65,7 @@ export default class ProductModel extends BaseModel {
 
   async readAll() {
     const materiais = await this.db`
-      SELECT a.referencia, a.tipo, b.nome as setor
+      SELECT a.referencia, a.tipo, a.cod_setor, b.nome as setor
       FROM lab_system.material a
       JOIN lab_system.setor b ON a.cod_setor = b.id;
     `;
@@ -72,7 +74,7 @@ export default class ProductModel extends BaseModel {
 
   async list() {
     const materiais = await this.db`
-      SELECT a.referencia, a.tipo, b.nome as setor
+      SELECT a.referencia, a.tipo, a.cod_setor, b.nome as setor
       FROM lab_system.material a
       JOIN lab_system.setor b ON a.cod_setor = b.id;
     `;
