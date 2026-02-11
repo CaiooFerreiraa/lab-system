@@ -77,8 +77,21 @@ export function parseTechnicalData(text) {
     if (kgfMatch) data.vMedia = parseFloat(kgfMatch[1].replace(',', '.'));
   }
 
-  if (text.toLowerCase().includes('aprovado') || text.toLowerCase().includes('pass')) data.statusFinal = 'Aprovado';
-  else if (text.toLowerCase().includes('reprovado') || text.toLowerCase().includes('fail')) data.statusFinal = 'Reprovado';
+  // 2.2 Detecção de Status Final (Melhorada com Âncoras)
+  const statusMatch = text.match(/(?:parecer\s+t[ée]cnico|evaluation|status\s+final|resultado)[\s\-:]*([\s\n]*(?:aprovado|pass|approved|reprovado|fail|rejected|reprovação))/i);
+
+  if (statusMatch) {
+    const statusText = statusMatch[1].toLowerCase();
+    if (/aprovado|pass|approved/i.test(statusText)) {
+      data.statusFinal = 'Aprovado';
+    } else if (/reprovado|fail|rejected|reprovação/i.test(statusText)) {
+      data.statusFinal = 'Reprovado';
+    }
+  } else {
+    // Fallback caso não encontre a âncora, busca por palavras isoladas com limites de borda
+    if (/\b(aprovado|pass|approved)\b/i.test(text)) data.statusFinal = 'Aprovado';
+    else if (/\b(reprovado|fail|rejected|reprovação)\b/i.test(text)) data.statusFinal = 'Reprovado';
+  }
 
   // 3. Metadados de Produção
   if (isNike) {
