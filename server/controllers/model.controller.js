@@ -27,6 +27,12 @@ export default class ModelController {
     res.json({ success: true, message: "Modelo atualizado com sucesso." });
   });
 
+  linkMSC = asyncHandler(async (req, res) => {
+    const { cod_modelo, fk_msc_id } = req.body;
+    await this.repository.linkMSC(cod_modelo, fk_msc_id);
+    res.json({ success: true, message: "MSC vinculada com sucesso." });
+  });
+
   remove = asyncHandler(async (req, res) => {
     await this.repository.delete(req.query);
     res.json({ success: true, message: "Modelo deletado com sucesso." });

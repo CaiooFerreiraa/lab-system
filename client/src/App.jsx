@@ -27,12 +27,17 @@ import ModelInfo from "./components/model/ModelInfo";
 
 import TestList from "./components/test/TestList";
 import TestRegister from "./components/test/TestRegister";
+import TestEdit from "./components/test/TestEdit";
+import LaudoDetails from "./components/test/LaudoDetails";
 import TestReport from "./components/test/TestReport";
 
 import DescolagemPage from "./components/descolagem/DescolagemPage";
 import DescolagemReport from "./components/descolagem/DescolagemReport";
 import MSCList from "./components/msc/MSCList";
 import MSCRegister from "./components/msc/MSCRegister";
+
+import BalancaList from "./components/balanca/BalancaList";
+import BalancaRegister from "./components/balanca/BalancaRegister";
 
 export default function App() {
   useEffect(() => {
@@ -74,9 +79,11 @@ export default function App() {
           <Route path="/model/edit/:uuid" element={<ModelEdit />} />
           <Route path="/model/view/:nome" element={<ModelInfo />} />
 
-          {/* Test */}
+          {/* Test & Laudo */}
           <Route path="/test" element={<TestList />} />
           <Route path="/test/register" element={<TestRegister />} />
+          <Route path="/test/edit/:id" element={<TestEdit />} />
+          <Route path="/laudo/:id" element={<LaudoDetails />} />
           <Route path="/test/report" element={<TestReport />} />
 
           {/* Descolagem */}
@@ -87,6 +94,11 @@ export default function App() {
           <Route path="/msc" element={<MSCList />} />
           <Route path="/msc/register" element={<MSCRegister />} />
           <Route path="/msc/edit/:id" element={<MSCRegister />} />
+
+          {/* Balancas */}
+          <Route path="/balancas" element={<BalancaList />} />
+          <Route path="/balanca/register" element={<BalancaRegister />} />
+          <Route path="/balanca/edit/:id" element={<BalancaRegister />} />
         </Routes>
       </main>
     </div>

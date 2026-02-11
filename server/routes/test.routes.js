@@ -12,6 +12,9 @@ router.get("/search", controller.search);
 router.put("/edit", controller.edit);
 router.delete("/delete", controller.remove);
 router.get("/read", controller.readAll);
+router.get("/read-laudos", controller.readAllLaudos);
+router.get("/laudo/:id", controller.getLaudo);
+router.post("/laudo/:laudoId/add-test", controller.addTestToLaudo);
 router.get("/report", controller.report);
 
 export default router;

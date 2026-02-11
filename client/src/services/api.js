@@ -77,6 +77,7 @@ export const modelApi = {
   search: (uuid) => request(`/model/search/${encodeURIComponent(uuid)}`),
   register: (data) => request("/model/register", { method: "POST", body: JSON.stringify(data) }),
   update: (data) => request("/model/edit", { method: "PUT", body: JSON.stringify(data) }),
+  linkMSC: (data) => request("/model/link-msc", { method: "PUT", body: JSON.stringify(data) }),
   remove: (nome) => request(`/model/delete?nome=${encodeURIComponent(nome)}`, { method: "DELETE" }),
 };
 
@@ -85,11 +86,28 @@ export const modelApi = {
 // ============================
 export const testApi = {
   list: () => request("/test/read"),
+  listLaudos: () => request("/test/read-laudos"),
+  getLaudo: (id) => request(`/test/laudo/${id}`),
+  addTestToLaudo: (laudoId, data) => request(`/test/laudo/${laudoId}/add-test`, { method: "POST", body: JSON.stringify(data) }),
   search: (cod_teste) => request(`/test/search?cod_teste=${cod_teste}`),
   register: (data) => request("/test/register", { method: "POST", body: JSON.stringify(data) }),
   registerBatch: (data) => request("/test/register", { method: "POST", body: JSON.stringify(data) }),
+  update: (data) => request("/test/edit", { method: "PUT", body: JSON.stringify(data) }),
   remove: (cod_teste) => request(`/test/delete?cod_teste=${cod_teste}`, { method: "DELETE" }),
   report: () => request("/test/report"),
+};
+
+// ... (descolagem e msc)
+
+// ============================
+// Balança API
+// ============================
+export const balancaApi = {
+  list: () => request("/balanca/read"),
+  getOne: (id) => request(`/balanca/search/${id}`),
+  register: (data) => request("/balanca/register", { method: "POST", body: JSON.stringify(data) }),
+  update: (data) => request("/balanca/edit", { method: "PUT", body: JSON.stringify(data) }),
+  remove: (id) => request(`/balanca/delete/${id}`, { method: "DELETE" }),
 };
 
 // ============================
@@ -134,4 +152,3 @@ export const mscApi = {
   register: (data) => request("/msc/register", { method: "POST", body: JSON.stringify(data) }),
   update: (data) => request("/msc/edit", { method: "PUT", body: JSON.stringify(data) }),
 };
-

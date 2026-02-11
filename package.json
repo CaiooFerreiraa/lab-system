@@ -4,13 +4,26 @@
   "main": "server/server.js",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"nodemon server/server.js --ignore client/ --ignore Utilities/\" \"npm --prefix client run dev\"",
-    "start": "concurrently \"node server/server.js\" \"npm --prefix client run dev\"",
+    "start": "node server/server.js",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "nodemon server/server.js --ignore client/ --ignore Utilities/",
     "dev:client": "npm --prefix client run dev",
-    "build:client": "npm --prefix client run build",
+    "build": "npm --prefix client install && npm --prefix client run build",
     "install:client": "npm --prefix client install",
     "postinstall": "npm run install:client"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.10",
+    "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^9.9.0"
   },
   "repository": {
     "type": "git",
@@ -27,18 +40,5 @@
     "url": "https://github.com/CaiooFerreiraa/lab_system_backend/issues"
   },
   "homepage": "https://github.com/CaiooFerreiraa/lab_system_backend#readme",
-  "description": "Sistema de gerenciamento laboratorial - Backend e Frontend unificados",
-  "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "multer": "^2.0.2",
-    "nodemon": "^3.1.10",
-    "pdf-parse": "^2.4.5"
-  },
-  "devDependencies": {
-    "@faker-js/faker": "^9.9.0",
-    "concurrently": "^9.2.1"
-  }
+  "description": "Sistema de gerenciamento laboratorial - Backend e Frontend unificados"
 }

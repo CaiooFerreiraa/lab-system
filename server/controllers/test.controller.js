@@ -1,64 +1,62 @@
-import { asyncHandler, AppError } from "../middlewares/error-handler.js";
+import { asyncHandler } from "../middlewares/error-handler.js";
 
 export default class TestController {
   constructor(repository) {
     this.repository = repository;
   }
 
-  /**
-   * Registra teste(s). Aceita:
-   * - Objeto único (teste individual)
-   * - { shared, testes: [...] } (cadastro em lote)
-   */
   register = asyncHandler(async (req, res) => {
     const body = req.body;
-
-    // Cadastro em lote
+    // Se vier com array de testes, registra como laudo
     if (body.testes && Array.isArray(body.testes)) {
-      if (body.testes.length === 0) {
-        throw new AppError("Envie pelo menos um teste.", 400);
-      }
-      const results = await this.repository.registerBatch(body);
-      return res.status(201).json({
-        success: true,
-        message: `${results.total} teste(s) cadastrado(s).`,
-        data: results,
-      });
+      const result = await this.repository.registerLaudo(body);
+      return res.status(201).json({ success: true, message: "Laudo cadastrado com sucesso!", data: result });
     }
-
-    // Cadastro individual (retrocompatível)
+    // Individual (retrocompatibilidade)
     const result = await this.repository.register(body);
-    res.status(201).json({
-      success: true,
-      message: "Teste cadastrado com sucesso.",
-      data: result,
-    });
+    res.status(201).json({ success: true, message: "Teste cadastrado!", data: result });
+  });
+
+  readAllLaudos = asyncHandler(async (_req, res) => {
+    const data = await this.repository.readAllLaudos();
+    res.json({ success: true, data });
+  });
+
+  getLaudo = asyncHandler(async (req, res) => {
+    const data = await this.repository.getLaudo(req.params.id);
+    res.json({ success: true, data });
+  });
+
+  addTestToLaudo = asyncHandler(async (req, res) => {
+    const { laudoId } = req.params;
+    await this.repository.addTestToLaudo(laudoId, req.body);
+    res.json({ success: true, message: "Novo teste adicionado ao laudo." });
   });
 
   search = asyncHandler(async (req, res) => {
     const { cod_teste } = req.query;
-    const teste = await this.repository.search(cod_teste);
-    res.json({ success: true, data: teste });
+    const test = await this.repository.search(cod_teste);
+    res.json({ success: true, data: test });
   });
 
   edit = asyncHandler(async (req, res) => {
     await this.repository.edit(req.body);
-    res.json({ success: true, message: "Teste atualizado com sucesso." });
+    res.json({ success: true, message: "Atualizado com sucesso." });
   });
 
   remove = asyncHandler(async (req, res) => {
     const { cod_teste } = req.query;
     await this.repository.delete(cod_teste);
-    res.json({ success: true, message: "Teste deletado com sucesso." });
+    res.json({ success: true, message: "Excluído com sucesso." });
   });
 
   readAll = asyncHandler(async (_req, res) => {
-    const testes = await this.repository.readAll();
-    res.json({ success: true, data: testes });
+    const data = await this.repository.readAll();
+    res.json({ success: true, data });
   });
 
   report = asyncHandler(async (_req, res) => {
-    const report = await this.repository.getReport();
-    res.json({ success: true, data: report });
+    const reportData = await this.repository.getReport();
+    res.json({ success: true, data: reportData });
   });
 }

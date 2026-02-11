@@ -11,6 +11,7 @@ router.get("/read", controller.readAll);
 router.post("/register", controller.register);
 router.get("/search/:uuid", controller.search);
 router.put("/edit", controller.edit);
+router.put("/link-msc", controller.linkMSC);
 router.delete("/delete", controller.remove);
 
 export default router;

@@ -1,48 +1,37 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { testApi } from "../../services/api";
 import PageHeader from "../common/PageHeader";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
 
 export default function TestList() {
-  const [tests, setTests] = useState([]);
-  const [search, setSearch] = useState("");
+  const [laudos, setLaudos] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
   const navigate = useNavigate();
 
-  const fetchTests = async () => {
+  const fetchLaudos = async () => {
     setLoading(true);
     try {
-      const res = await testApi.list();
-      setTests(res.data || res.modelos || []);
+      const res = await testApi.listLaudos();
+      setLaudos(res.data || []);
     } catch (err) {
-      setPopup({ show: true, msg: err.message });
+      setPopup({ show: true, msg: "Erro ao carregar laudos." });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchTests(); }, []);
+  useEffect(() => {
+    fetchLaudos();
+  }, []);
 
-  const handleDelete = async (cod_teste) => {
-    if (!confirm("Deseja excluir esse teste?")) return;
-    setLoading(true);
-    try {
-      await testApi.remove(cod_teste);
-      setPopup({ show: true, msg: "Teste excluído com sucesso!" });
-      fetchTests();
-    } catch (err) {
-      setPopup({ show: true, msg: err.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filtered = tests.filter((t) =>
-    String(t.cod_teste)?.includes(search) ||
-    t.status?.toLowerCase().includes(search.toLowerCase())
+  const filtered = laudos.filter(l =>
+    l.id.toString().includes(searchTerm) ||
+    l.modelo_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    l.fk_material.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -51,46 +40,45 @@ export default function TestList() {
       {popup.show && <PopUp msg={popup.msg} onClose={() => setPopup({ show: false, msg: "" })} />}
 
       <PageHeader
-        title="Testes"
-        searchPlaceholder="Buscar por código ou status..."
-        onSearch={setSearch}
+        title="Laudos Técnicos"
+        searchPlaceholder="Buscar por ID, modelo ou material..."
+        onSearch={setSearchTerm}
         registerPath="/test/register"
       />
 
       <div className="data-grid">
-        {filtered.map((test, i) => (
-          <div className="data-card" key={i}>
-            <div className="data-card-avatar data-card-avatar--test">
-              <span className="material-symbols-outlined">science</span>
+        {filtered.map((l) => (
+          <div className="data-card" key={l.id}>
+            <div className={`data-card-avatar ${l.status_geral === 'Aprovado' ? 'tag--success' : 'tag--danger'}`}
+              style={{ background: l.status_geral === 'Aprovado' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: 'inherit' }}>
+              <span className="material-symbols-outlined">{l.status_geral === 'Aprovado' ? 'verified' : 'report'}</span>
             </div>
             <div className="data-card-info">
-              <h3 className="data-card-title">Teste #{test.cod_teste}</h3>
+              <h3 className="data-card-title">Laudo #{l.id} - {l.modelo_nome}</h3>
+              <p className="data-card-subtitle">{l.fk_material} | {l.setor_nome}</p>
               <div className="data-card-tags">
-                <span className={`tag ${test.status === "Aprovado" ? "tag--success" : test.status === "Reprovado" ? "tag--danger" : ""}`}>
-                  {test.status}
+                <span className={`tag ${l.status_geral === 'Aprovado' ? 'tag--success' : 'tag--danger'}`}>
+                  {l.status_geral}
                 </span>
-                <span className="tag tag--muted">{test.resultado}</span>
+                <span className="tag tag--muted">{l.total_testes} Teste(s)</span>
+                <span className="tag tag--info">{new Date(l.data_criacao).toLocaleDateString()}</span>
               </div>
             </div>
             <div className="data-card-actions">
-              <button
-                className="icon-btn icon-btn--danger"
-                onClick={() => handleDelete(test.cod_teste)}
-                title="Excluir"
-              >
-                <span className="material-symbols-outlined">delete</span>
-              </button>
+              <Link to={`/laudo/${l.id}`} className="icon-btn" title="Visualizar/Editar Laudo">
+                <span className="material-symbols-outlined">visibility</span>
+              </Link>
             </div>
           </div>
         ))}
-
-        {!loading && filtered.length === 0 && (
-          <div className="empty-state">
-            <span className="material-symbols-outlined empty-icon">science</span>
-            <p>Nenhum teste encontrado.</p>
-          </div>
-        )}
       </div>
+
+      {!loading && filtered.length === 0 && (
+        <div className="empty-state">
+          <span className="material-symbols-outlined empty-icon">assignment</span>
+          <p>Nenhum laudo encontrado.</p>
+        </div>
+      )}
     </>
   );
 }

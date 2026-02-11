@@ -8,6 +8,7 @@ import testRoutes from "./test.routes.js";
 import enumRoutes from "./enum.routes.js";
 import descolagemRoutes from "./descolagem.routes.js";
 import mscRoutes from "./msc.routes.js";
+import balancaRoutes from "./balanca.routes.js";
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.get("/", (_req, res) => {
       "/api/model",
       "/api/test",
       "/api/enum",
+      "/api/balanca"
     ],
   });
 });
@@ -36,5 +38,6 @@ router.use("/test", testRoutes);
 router.use("/enum", enumRoutes);
 router.use("/descolagem", descolagemRoutes);
 router.use("/msc", mscRoutes);
+router.use("/balanca", balancaRoutes);
 
 export default router;

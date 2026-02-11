@@ -49,10 +49,16 @@ app.use("/api", routes);
 // Compatibilidade com rotas antigas (sem /api)
 app.use(routes);
 
-// Rota raiz para status
-app.get("/", (_req, res) => {
-  res.send("✅ API Lab System rodando...");
-});
+// Servir arquivos do Frontend (Apenas em Produção)
+if (process.env.NODE_ENV === "production") {
+  const clientPath = path.join(__dirname, "..", "client", "dist");
+  app.use(express.static(clientPath));
+
+  // Rota para qualquer outra requisição cair no index.html do React (SPA fallback)
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(clientPath, "index.html"));
+  });
+}
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);

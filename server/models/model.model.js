@@ -39,6 +39,14 @@ export default class ModelModel extends BaseModel {
     return result[0].cod_marca;
   }
 
+  async linkMSC(codModelo, mscId) {
+    await this.db`
+      UPDATE lab_system.modelo
+      SET fk_msc_id = ${mscId}
+      WHERE cod_modelo = ${codModelo}
+    `;
+  }
+
   async search(id) {
     // Busca o modelo e verifica se tem MSC
     const modelBase = await this.db`

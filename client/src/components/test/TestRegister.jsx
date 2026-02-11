@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { testApi, enumApi, employeeApi, modelApi, sectorApi, productApi } from "../../services/api";
+import { testApi, enumApi, employeeApi, modelApi, sectorApi, productApi, mscApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
 
@@ -12,7 +12,8 @@ export default function TestRegister() {
   const [employeeList, setEmployeeList] = useState([]);
   const [modelList, setModelList] = useState([]);
   const [sectorList, setSectorList] = useState([]);
-  const [materialList, setMaterialList] = useState([]); // Referências do banco
+  const [materialList, setMaterialList] = useState([]);
+  const [mscList, setMscList] = useState([]);
 
   // Filtros dinâmicos
   const [filteredMaterials, setFilteredMaterials] = useState([]);
@@ -23,12 +24,16 @@ export default function TestRegister() {
   const [fkMaterial, setFkMaterial] = useState("");
   const [productType, setProductType] = useState(""); // BN/DN/Base
   const [productSetor, setProductSetor] = useState("");
+  const [observacoes, setObservacoes] = useState("");
 
   // Testes individuais
   const [testes, setTestes] = useState([emptyTest()]);
 
   // Especificações do modelo (para auto-avaliação no front)
   const [modelSpecs, setModelSpecs] = useState([]);
+  const [currentMscName, setCurrentMscName] = useState("");
+  const [currentMscId, setCurrentMscId] = useState("");
+  const [selectedMscLink, setSelectedMscLink] = useState("");
 
   // UI
   const [loading, setLoading] = useState(false);
@@ -39,18 +44,20 @@ export default function TestRegister() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [typeRes, empRes, modelRes, sectorRes, matRes] = await Promise.all([
+        const [typeRes, empRes, modelRes, sectorRes, matRes, mscRes] = await Promise.all([
           enumApi.typesTest(),
           employeeApi.list(),
           modelApi.list(),
           sectorApi.list(),
           productApi.list(),
+          mscApi.list()
         ]);
         setTypeTestList(typeRes.data || []);
         setEmployeeList(empRes.data || []);
         setModelList(modelRes.data || []);
         setSectorList(sectorRes.data || []);
         setMaterialList(matRes.data || []);
+        setMscList(mscRes.data || []);
       } catch (err) {
         setPopup({ show: true, msg: "Erro ao carregar dados do banco." });
       }
@@ -58,7 +65,7 @@ export default function TestRegister() {
     loadData();
   }, []);
 
-  // Filtrar materiais por setor e resetar seleção quando setor muda
+  // Filtrar materiais por setor
   useEffect(() => {
     if (!productSetor) {
       setFilteredMaterials(materialList);
@@ -78,28 +85,47 @@ export default function TestRegister() {
     }
     const mat = materialList.find((m) => m.referencia === fkMaterial);
     if (mat && mat.tipo) {
-      setProductType(mat.tipo); // Seta BN, DN ou Base automaticamente
+      setProductType(mat.tipo);
     }
   }, [fkMaterial, materialList]);
-
-  const [currentMscName, setCurrentMscName] = useState("");
 
   // Carregar especificações do modelo selecionado
   useEffect(() => {
     if (!fkModelo) {
       setModelSpecs([]);
       setCurrentMscName("");
+      setCurrentMscId("");
       return;
     }
+    fetchModelSpecs();
+  }, [fkModelo]);
+
+  const fetchModelSpecs = () => {
     modelApi.search(fkModelo).then((res) => {
       const data = res.data || res;
       setModelSpecs(data?.especificacoes || []);
       setCurrentMscName(data?.msc_nome || "Especificação Manual (Sem MSC)");
+      setCurrentMscId(data?.fk_msc_id || "");
+      if (data?.fk_msc_id) setSelectedMscLink(data.fk_msc_id);
     }).catch(() => {
       setModelSpecs([]);
       setCurrentMscName("");
     });
-  }, [fkModelo]);
+  };
+
+  const handleLinkMsc = async () => {
+    if (!selectedMscLink) return;
+    setLoading(true);
+    try {
+      await modelApi.linkMSC({ cod_modelo: fkModelo, fk_msc_id: selectedMscLink });
+      setPopup({ show: true, msg: "MSC vinculada ao modelo com sucesso!" });
+      fetchModelSpecs();
+    } catch (err) {
+      setPopup({ show: true, msg: "Erro ao vincular MSC." });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addTest = () => setTestes([...testes, emptyTest()]);
   const removeTest = (i) => testes.length > 1 && setTestes(testes.filter((_, idx) => idx !== i));
@@ -121,6 +147,7 @@ export default function TestRegister() {
           fk_cod_setor: productSetor,
           tipo: productType,
           status: "Pendente",
+          observacoes: observacoes,
         },
         testes: testes.map((t) => ({
           fk_tipo_cod_tipo: t.fk_tipo_cod_tipo,
@@ -146,12 +173,13 @@ export default function TestRegister() {
       {loading && <Loader />}
       {popup.show && <PopUp msg={popup.msg} onClose={() => {
         setPopup({ show: false, msg: "" });
-        navigate("/test");
+        if (!popup.msg.includes("vinculada")) navigate("/test");
       }} />}
 
       <main className="form-page" style={{ maxWidth: 900 }}>
         <header className="form-page-header">
-          <h1>Cadastrar Testes</h1>
+          <h1>Emitir Laudo Técnico</h1>
+          <p className="text-secondary">Combine múltiplos testes em um único laudo de material</p>
         </header>
 
         {results ? (
@@ -230,20 +258,42 @@ export default function TestRegister() {
                   <option value="">Selecione o Modelo</option>
                   {modelList.map((m) => <option key={m.cod_modelo} value={m.cod_modelo}>{m.nome} ({m.marca})</option>)}
                 </select>
+
                 {fkModelo && (
-                  <div style={{ fontSize: '0.85rem', marginTop: '8px', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '16px', verticalAlign: 'middle', marginRight: '6px', color: 'var(--accent-primary)' }}>assignment</span>
-                    <strong style={{ color: 'var(--text-primary)' }}>Ficha Técnica:</strong> {currentMscName}
-                    {!currentMscName.includes("Manual") && (
-                      <Link to={`/msc`} target="_blank" style={{ marginLeft: '10px', fontSize: '0.75rem', textDecoration: 'underline', color: 'var(--accent-primary)' }}>Ver Ficha</Link>
-                    )}
-                    {currentMscName.includes("Manual") && (
-                      <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Este modelo usa especificações manuais. <Link to="/model" style={{ color: 'var(--accent-primary)' }}>Editar Modelo</Link> para vincular uma MSC.
-                      </div>
-                    )}
+                  <div style={{ fontSize: '0.85rem', marginTop: '8px', padding: '12px', background: 'var(--bg-card-hover)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ marginBottom: '8px' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px', verticalAlign: 'middle', marginRight: '6px', color: 'var(--accent-primary)' }}>assignment</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>Ficha Técnica Atual:</strong> {currentMscName}
+                    </div>
+
+                    <div className="link-msc-control" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <select
+                        value={selectedMscLink}
+                        onChange={(e) => setSelectedMscLink(e.target.value)}
+                        style={{ flex: 1, padding: '6px', fontSize: '0.85rem' }}
+                      >
+                        <option value="">Selecione para Vincular/Alterar...</option>
+                        {mscList.map(m => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
+                      </select>
+                      <button type="button" className="btn btn-sm btn-outline" onClick={handleLinkMsc} disabled={!selectedMscLink || selectedMscLink == currentMscId}>
+                        Vincular
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Ao vincular, este modelo passará a usar as regras da MSC selecionada para todos os testes.
+                    </div>
                   </div>
                 )}
+              </div>
+
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Observações do Laudo (Opcional)</label>
+                <textarea
+                  value={observacoes}
+                  onChange={(e) => setObservacoes(e.target.value)}
+                  placeholder="Descreva detalhes ou anomalias observadas no lote..."
+                  style={{ minHeight: '80px', background: 'var(--bg-input)', border: '1.5px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px' }}
+                />
               </div>
 
               <div className="form-section-title">
@@ -264,15 +314,6 @@ export default function TestRegister() {
                         <option value="">Selecione</option>
                         {typeTestList.map((t) => <option key={t.cod_tipo} value={t.cod_tipo}>{t.nome}</option>)}
                       </select>
-                      {teste.fk_tipo_cod_tipo && (
-                        <div className="spec-indicator" style={{ fontSize: '0.75rem', marginTop: '4px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>
-                          {(() => {
-                            const typeName = typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome;
-                            const spec = modelSpecs.find(s => s.tipo === typeName);
-                            return spec ? `Norma: ${spec.label}` : "Sem norma cadastrada";
-                          })()}
-                        </div>
-                      )}
                     </div>
                     <div className="form-group">
                       <label>Resultado *</label>
@@ -283,6 +324,21 @@ export default function TestRegister() {
                       <input type="date" value={teste.data_fim} onChange={(e) => updateTest(index, "data_fim", e.target.value)} />
                     </div>
                   </div>
+
+                  {teste.fk_tipo_cod_tipo && (
+                    <div className="test-row-spec-hint">
+                      <span className="material-symbols-outlined">info</span>
+                      {(() => {
+                        const typeName = typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome;
+                        const spec = modelSpecs.find(s => s.tipo === typeName);
+                        return spec ? (
+                          <span>Norma esperada: <strong>{spec.label}</strong></span>
+                        ) : (
+                          <span>Nenhuma norma específica cadastrada para este teste.</span>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               ))}
 
