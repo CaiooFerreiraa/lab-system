@@ -49,15 +49,10 @@ app.use("/api", routes);
 // Compatibilidade com rotas antigas (sem /api)
 app.use(routes);
 
-// Servir frontend em produção (Caso queira rodar o front junto)
-if (process.env.NODE_ENV === "production") {
-  const clientPath = path.join(__dirname, "..", "client", "dist");
-  app.use(express.static(clientPath));
-
-  app.get("/:all*", (_req, res) => {
-    res.sendFile(path.join(clientPath, "index.html"));
-  });
-}
+// Rota raiz para status
+app.get("/", (_req, res) => {
+  res.send("✅ API Lab System rodando...");
+});
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);
