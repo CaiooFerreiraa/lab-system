@@ -56,8 +56,9 @@ export default class SectorModel extends BaseModel {
 
   async readAll() {
     const setores = await this.db`
-      SELECT nome
+      SELECT id, nome
       FROM lab_system.setor
+      ORDER BY nome ASC;
     `;
     return setores;
   }
