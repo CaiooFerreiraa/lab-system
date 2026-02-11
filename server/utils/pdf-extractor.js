@@ -190,12 +190,19 @@ export function parseTechnicalData(text) {
     return `${year}-${month}-${day}`;
   };
 
-  const completedDate = text.match(/completed\s+date\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)?.[1];
-  const manufacturedDate = text.match(/manufactured\s+date\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)?.[1];
+  const realizacaoMatch = text.match(/(?:data\s+do\s+teste|data\s+realiza[çc][ãa]o|completed\s+date|execution\s+date)[\s\-:]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+  const colagemMatch = text.match(/(?:data\s+da\s+colagem|data\s+colagem|manufactured\s+date|bonding\s+date)[\s\-:]*(\d{1,2}\/\d{1,2}\/\d{4})/i);
   const dates = text.match(/\d{1,2}\/\d{1,2}\/\d{4}/g) || [];
 
-  data.data_realizacao = formatDateForDB(completedDate || dates[0]);
-  data.data_colagem = formatDateForDB(manufacturedDate || dates[1]);
+  if (isNike) {
+    // No Nike: 0:Manufactured, 1:Received, 2:Completed
+    data.data_realizacao = formatDateForDB(realizacaoMatch?.[1] || (dates.length >= 3 ? dates[2] : dates[0]));
+    data.data_colagem = formatDateForDB(colagemMatch?.[1] || dates[0]);
+  } else {
+    // Laudo Único: 0:Realização, 1:Colagem
+    data.data_realizacao = formatDateForDB(realizacaoMatch?.[1] || dates[0]);
+    data.data_colagem = formatDateForDB(colagemMatch?.[1] || dates[1]);
+  }
 
   data.cores = data.cores || text.match(/(?:cores|coloração|colors|cor)[\s\-:]*([^\n]+)/i)?.[1]?.trim();
   const pedidoMatch = text.match(/(?:pedido|nbr|order|po\s+no)[\s\-:]*([^\n#]+)/i);
