@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { sectorApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
@@ -8,6 +8,7 @@ export default function SectorRegister() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,7 +27,10 @@ export default function SectorRegister() {
   return (
     <>
       {loading && <Loader />}
-      {popup.show && <PopUp msg={popup.msg} onClose={() => setPopup({ show: false, msg: "" })} />}
+      {popup.show && <PopUp msg={popup.msg} onClose={() => {
+        setPopup({ show: false, msg: "" });
+        navigate("/sector");
+      }} />}
 
       <main className="form-page">
         <header className="form-page-header">

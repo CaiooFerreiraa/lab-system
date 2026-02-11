@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { modelApi, markApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
@@ -14,6 +14,7 @@ export default function ModelRegister() {
   const [shoeTypes, setShoeTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
@@ -60,7 +61,10 @@ export default function ModelRegister() {
   return (
     <>
       {loading && <Loader />}
-      {popup.show && <PopUp msg={popup.msg} onClose={() => setPopup({ show: false, msg: "" })} />}
+      {popup.show && <PopUp msg={popup.msg} onClose={() => {
+        setPopup({ show: false, msg: "" });
+        navigate("/model");
+      }} />}
 
       <main className="form-page">
         <header className="form-page-header">

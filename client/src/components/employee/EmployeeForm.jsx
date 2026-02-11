@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { employeeApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
@@ -11,6 +11,7 @@ export default function EmployeeForm({ initialData, isEdit }) {
   const [shift, setShift] = useState(initialData?.shift || "");
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,7 +44,10 @@ export default function EmployeeForm({ initialData, isEdit }) {
   return (
     <>
       {loading && <Loader />}
-      {popup.show && <PopUp msg={popup.msg} onClose={() => setPopup({ show: false, msg: "" })} />}
+      {popup.show && <PopUp msg={popup.msg} onClose={() => {
+        setPopup({ show: false, msg: "" });
+        navigate("/employee");
+      }} />}
 
       <main className="form-page">
         <header className="form-page-header">

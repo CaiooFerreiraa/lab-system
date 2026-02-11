@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { testApi, enumApi, employeeApi, modelApi, sectorApi, productApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
@@ -34,6 +34,7 @@ export default function TestRegister() {
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
   const [results, setResults] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadData = async () => {
@@ -136,7 +137,10 @@ export default function TestRegister() {
   return (
     <>
       {loading && <Loader />}
-      {popup.show && <PopUp msg={popup.msg} onClose={() => setPopup({ show: false, msg: "" })} />}
+      {popup.show && <PopUp msg={popup.msg} onClose={() => {
+        setPopup({ show: false, msg: "" });
+        navigate("/test");
+      }} />}
 
       <main className="form-page" style={{ maxWidth: 900 }}>
         <header className="form-page-header">

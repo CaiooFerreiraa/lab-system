@@ -295,7 +295,7 @@ export default function DescolagemPage() {
               </div>
               <div className="descolagem-card-actions">
                 <button onClick={() => setViewRecord(rec)} className="icon-btn"><span className="material-symbols-outlined">visibility</span></button>
-                <button onClick={async () => { if (confirm("Excluir?")) { await descolagemApi.remove(rec.id); loadRecords(); } }} className="icon-btn icon-btn--danger"><span className="material-symbols-outlined">delete</span></button>
+                <button onClick={(e) => { e.stopPropagation(); if (confirm("Excluir?")) { descolagemApi.remove(rec.id).then(() => loadRecords()); } }} className="icon-btn icon-btn--danger"><span className="material-symbols-outlined">delete</span></button>
               </div>
             </div>
           )) : (
