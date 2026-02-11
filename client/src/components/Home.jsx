@@ -4,6 +4,7 @@ const MODULES = [
   { path: "/employee", label: "Funcionários", icon: "group", color: "hsl(210, 80%, 55%)", desc: "Gerenciar cadastros de funcionários" },
   { path: "/mark", label: "Marcas", icon: "label", color: "hsl(280, 70%, 55%)", desc: "Gerenciar marcas e métodos" },
   { path: "/model", label: "Modelos", icon: "view_in_ar", color: "hsl(340, 75%, 55%)", desc: "Gerenciar modelos e especificações" },
+  { path: "/msc", label: "Fichas Técnicas (MSC)", icon: "assignment", color: "hsl(45, 90%, 50%)", desc: "Gerenciar padrões DN, BN e Base" },
   { path: "/product", label: "Produtos", icon: "inventory_2", color: "hsl(160, 60%, 45%)", desc: "Gerenciar materiais e produtos" },
   { path: "/sector", label: "Setores", icon: "domain", color: "hsl(30, 85%, 55%)", desc: "Gerenciar setores laboratoriais" },
   { path: "/test", label: "Testes", icon: "science", color: "hsl(190, 70%, 50%)", desc: "Gerenciar testes e resultados" },

@@ -38,6 +38,14 @@ export default defineConfig({
         target: "http://localhost:5000",
         changeOrigin: true,
       },
+      "/descolagem": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+      "/msc": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
     },
   },
 });

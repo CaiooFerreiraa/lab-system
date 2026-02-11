@@ -7,6 +7,7 @@ import modelRoutes from "./model.routes.js";
 import testRoutes from "./test.routes.js";
 import enumRoutes from "./enum.routes.js";
 import descolagemRoutes from "./descolagem.routes.js";
+import mscRoutes from "./msc.routes.js";
 
 const router = Router();
 
@@ -34,5 +35,6 @@ router.use("/model", modelRoutes);
 router.use("/test", testRoutes);
 router.use("/enum", enumRoutes);
 router.use("/descolagem", descolagemRoutes);
+router.use("/msc", mscRoutes);
 
 export default router;

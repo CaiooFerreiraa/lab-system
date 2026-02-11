@@ -82,16 +82,23 @@ export default function TestRegister() {
     }
   }, [fkMaterial, materialList]);
 
+  const [currentMscName, setCurrentMscName] = useState("");
+
   // Carregar especificações do modelo selecionado
   useEffect(() => {
     if (!fkModelo) {
       setModelSpecs([]);
+      setCurrentMscName("");
       return;
     }
     modelApi.search(fkModelo).then((res) => {
       const data = res.data || res;
       setModelSpecs(data?.especificacoes || []);
-    }).catch(() => setModelSpecs([]));
+      setCurrentMscName(data?.msc_nome || "Especificação Manual (Sem MSC)");
+    }).catch(() => {
+      setModelSpecs([]);
+      setCurrentMscName("");
+    });
   }, [fkModelo]);
 
   const addTest = () => setTestes([...testes, emptyTest()]);
@@ -223,6 +230,20 @@ export default function TestRegister() {
                   <option value="">Selecione o Modelo</option>
                   {modelList.map((m) => <option key={m.cod_modelo} value={m.cod_modelo}>{m.nome} ({m.marca})</option>)}
                 </select>
+                {fkModelo && (
+                  <div style={{ fontSize: '0.85rem', marginTop: '8px', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', verticalAlign: 'middle', marginRight: '6px', color: 'var(--accent-primary)' }}>assignment</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>Ficha Técnica:</strong> {currentMscName}
+                    {!currentMscName.includes("Manual") && (
+                      <Link to={`/msc`} target="_blank" style={{ marginLeft: '10px', fontSize: '0.75rem', textDecoration: 'underline', color: 'var(--accent-primary)' }}>Ver Ficha</Link>
+                    )}
+                    {currentMscName.includes("Manual") && (
+                      <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Este modelo usa especificações manuais. <Link to="/model" style={{ color: 'var(--accent-primary)' }}>Editar Modelo</Link> para vincular uma MSC.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="form-section-title">
@@ -243,6 +264,15 @@ export default function TestRegister() {
                         <option value="">Selecione</option>
                         {typeTestList.map((t) => <option key={t.cod_tipo} value={t.cod_tipo}>{t.nome}</option>)}
                       </select>
+                      {teste.fk_tipo_cod_tipo && (
+                        <div className="spec-indicator" style={{ fontSize: '0.75rem', marginTop: '4px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>
+                          {(() => {
+                            const typeName = typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome;
+                            const spec = modelSpecs.find(s => s.tipo === typeName);
+                            return spec ? `Norma: ${spec.label}` : "Sem norma cadastrada";
+                          })()}
+                        </div>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Resultado *</label>

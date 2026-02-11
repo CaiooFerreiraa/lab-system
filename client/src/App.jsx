@@ -31,6 +31,8 @@ import TestReport from "./components/test/TestReport";
 
 import DescolagemPage from "./components/descolagem/DescolagemPage";
 import DescolagemReport from "./components/descolagem/DescolagemReport";
+import MSCList from "./components/msc/MSCList";
+import MSCRegister from "./components/msc/MSCRegister";
 
 export default function App() {
   useEffect(() => {
@@ -80,6 +82,11 @@ export default function App() {
           {/* Descolagem */}
           <Route path="/descolagem" element={<DescolagemPage />} />
           <Route path="/descolagem/report" element={<DescolagemReport />} />
+
+          {/* MSC */}
+          <Route path="/msc" element={<MSCList />} />
+          <Route path="/msc/register" element={<MSCRegister />} />
+          <Route path="/msc/edit/:id" element={<MSCRegister />} />
         </Routes>
       </main>
     </div>

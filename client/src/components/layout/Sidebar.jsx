@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { path: "/employee", label: "Funcionários", icon: "group" },
   { path: "/mark", label: "Marcas", icon: "label" },
   { path: "/model", label: "Modelos", icon: "view_in_ar" },
+  { path: "/msc", label: "Fichas Técnicas (MSC)", icon: "assignment" },
   { path: "/product", label: "Produtos", icon: "inventory_2" },
   { path: "/sector", label: "Setores", icon: "domain" },
   { path: "/test", label: "Testes", icon: "science", excludes: ["/test/report"] },

@@ -125,3 +125,13 @@ export const descolagemApi = {
   remove: (id) => request(`/descolagem/delete?id=${id}`, { method: "DELETE" }),
 };
 
+// ============================
+// MSC API
+// ============================
+export const mscApi = {
+  list: () => request("/msc/read"),
+  getOne: (id) => request(`/msc/search/${id}`),
+  register: (data) => request("/msc/register", { method: "POST", body: JSON.stringify(data) }),
+  update: (data) => request("/msc/edit", { method: "PUT", body: JSON.stringify(data) }),
+};
+

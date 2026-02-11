@@ -78,7 +78,52 @@ export default class TestModel extends BaseModel {
   async #autoEvaluate(resultado, codModelo, tipoNome) {
     if (resultado == null || resultado === "") return null;
 
-    const spec = await this.db`
+    // 1. Tentar buscar da MSC vinculada ao Modelo (Novo Padrão)
+    const mscSpec = await this.db`
+      SELECT e.*
+      FROM lab_system.msc_especificacao e
+      JOIN lab_system.modelo m ON m.fk_msc_id = e.fk_msc_id
+      WHERE m.cod_modelo = ${codModelo}
+        AND e.tipo_teste::text = ${tipoNome}
+      LIMIT 1
+    `;
+
+    const valor = parseFloat(resultado);
+
+    if (mscSpec.length > 0) {
+      const s = mscSpec[0];
+      let aprovado = false;
+      let rangeInfo = "";
+
+      switch (s.regra_tipo) {
+        case 'range':
+          aprovado = valor >= parseFloat(s.v_min) && valor <= parseFloat(s.v_max);
+          rangeInfo = `${s.v_min} a ${s.v_max}`;
+          break;
+        case 'max':
+          aprovado = valor < parseFloat(s.v_max);
+          rangeInfo = `< ${s.v_max}`;
+          break;
+        case 'min':
+          aprovado = valor > parseFloat(s.v_min);
+          rangeInfo = `> ${s.v_min}`;
+          break;
+        default: // 'fixed'
+          const target = parseFloat(s.v_alvo);
+          const vari = parseFloat(s.v_variacao);
+          aprovado = valor >= (target - vari) && valor <= (target + vari);
+          rangeInfo = `${target} +/- ${vari}`;
+      }
+
+      return {
+        status: aprovado ? "Aprovado" : "Reprovado",
+        specId: null, // Na MSC usamos o link da msc_espec se necessário, mas para o teste legamos nulo por enquanto
+        spec: { format: s.regra_tipo, info: rangeInfo, aprovado }
+      };
+    }
+
+    // 2. Fallback para Especificação Direta (Padrão Antigo)
+    const legacySpec = await this.db`
       SELECT cod_especificacao, valor_especificacao, valor_variacao
       FROM lab_system.especificacao
       WHERE cod_modelo = ${codModelo}
@@ -86,31 +131,33 @@ export default class TestModel extends BaseModel {
       LIMIT 1
     `;
 
-    if (spec.length === 0) return null;
+    if (legacySpec.length > 0) {
+      const { cod_especificacao, valor_especificacao, valor_variacao } = legacySpec[0];
+      const especVal = parseFloat(valor_especificacao);
+      const variacaoVal = parseFloat(valor_variacao);
+      const min = especVal - variacaoVal;
+      const max = especVal + variacaoVal;
+      const aprovado = valor >= min && valor <= max;
 
-    const { cod_especificacao, valor_especificacao, valor_variacao } = spec[0];
-    const valor = parseFloat(resultado);
-    const especVal = parseFloat(valor_especificacao);
-    const variacaoVal = parseFloat(valor_variacao);
-    const min = especVal - variacaoVal;
-    const max = especVal + variacaoVal;
-    const aprovado = valor >= min && valor <= max;
+      return {
+        status: aprovado ? "Aprovado" : "Reprovado",
+        specId: cod_especificacao,
+        spec: { valor: especVal, variacao: variacaoVal, min, max },
+      };
+    }
 
-    return {
-      status: aprovado ? "Aprovado" : "Reprovado",
-      specId: cod_especificacao,
-      spec: { valor: especVal, variacao: variacaoVal, min, max },
-    };
+    return null;
   }
 
   async #getAnySpecForModel(codModelo) {
+    if (!codModelo) return null;
     const spec = await this.db`
       SELECT cod_especificacao
       FROM lab_system.especificacao
       WHERE cod_modelo = ${codModelo}
       LIMIT 1
     `;
-    return spec.length > 0 ? spec[0].cod_especificacao : 82;
+    return spec.length > 0 ? spec[0].cod_especificacao : null;
   }
 
   async #getTipoByNome(identifier) {

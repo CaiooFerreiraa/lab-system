@@ -5,20 +5,23 @@ export default class ModelModel extends BaseModel {
     super(db);
   }
 
-  async register({ nome, tipo, marca, especificacoes }) {
+  async register({ nome, tipo, marca, fk_msc_id, especificacoes }) {
     const cod_marca = await this.#getBrandId(marca);
 
     const [{ cod_modelo }] = await this.db`
-      INSERT INTO lab_system.modelo (nome, tipo, cod_marca)
-      VALUES (${nome}, ${tipo}, ${cod_marca})
+      INSERT INTO lab_system.modelo (nome, tipo, cod_marca, fk_msc_id)
+      VALUES (${nome}, ${tipo}, ${cod_marca}, ${fk_msc_id || null})
       RETURNING cod_modelo;
     `;
 
-    for (const esp of especificacoes) {
-      await this.db`
-        INSERT INTO lab_system.especificacao (cod_modelo, tipo, valor_especificacao, valor_variacao)
-        VALUES (${cod_modelo}, ${esp.tipo}, ${esp.valor}, ${esp.variacao});
-      `;
+    if (especificacoes && especificacoes.length > 0) {
+      for (const esp of especificacoes) {
+        if (!esp.tipo || (!esp.valor && !esp.variacao)) continue;
+        await this.db`
+          INSERT INTO lab_system.especificacao (cod_modelo, tipo, valor_especificacao, valor_variacao)
+          VALUES (${cod_modelo}, ${esp.tipo}, ${esp.valor}, ${esp.variacao});
+        `;
+      }
     }
   }
 
@@ -37,39 +40,60 @@ export default class ModelModel extends BaseModel {
   }
 
   async search(id) {
-    const result = await this.db`
-      SELECT
-        m.cod_modelo,
-        m.nome,
-        m.tipo,
-        ma.nome AS marca,
-        e.tipo AS espec_tipo,
-        e.valor_especificacao AS Valor,
-        e.valor_variacao AS "Variação"
+    // Busca o modelo e verifica se tem MSC
+    const modelBase = await this.db`
+      SELECT m.*, ma.nome as marca_nome, msc.nome as msc_nome
       FROM lab_system.modelo m
       JOIN lab_system.marca ma ON m.cod_marca = ma.cod_marca
-      LEFT JOIN lab_system.especificacao e ON m.cod_modelo = e.cod_modelo
-      WHERE m.nome = ${id};
+      LEFT JOIN lab_system.msc msc ON m.fk_msc_id = msc.id
+      WHERE m.cod_modelo::text = ${id}::text OR m.nome = ${id}
+      LIMIT 1
     `;
 
-    if (result.length === 0) return null;
+    if (modelBase.length === 0) return null;
+    const m = modelBase[0];
 
     const modelo = {
-      cod_modelo: result[0].cod_modelo,
-      nome: result[0].nome,
-      tipo: result[0].tipo,
-      marca: result[0].marca,
+      cod_modelo: m.cod_modelo,
+      nome: m.nome,
+      tipo: m.tipo,
+      marca: m.marca_nome,
+      fk_msc_id: m.fk_msc_id,
+      msc_nome: m.msc_nome, // <--- Adicionado
       especificacoes: [],
     };
 
-    for (const row of result) {
-      if (row.espec_tipo) {
-        modelo.especificacoes.push({
-          tipo: row.espec_tipo,
-          valor: row.valor,
-          variacao: row["Variação"],
-        });
-      }
+    if (m.fk_msc_id) {
+      // Busca especificações da MSC
+      const specs = await this.db`
+        SELECT * FROM lab_system.msc_especificacao WHERE fk_msc_id = ${m.fk_msc_id}
+      `;
+      modelo.especificacoes = specs.map(s => ({
+        tipo: s.tipo_teste,
+        regra_tipo: s.regra_tipo,
+        v_alvo: s.v_alvo,
+        v_variacao: s.v_variacao,
+        v_min: s.v_min,
+        v_max: s.v_max,
+        label: s.regra_tipo === 'range' ? `${s.v_min} a ${s.v_max}` :
+          s.regra_tipo === 'max' ? `< ${s.v_max}` :
+            s.regra_tipo === 'min' ? `> ${s.v_min}` :
+              `${s.v_alvo} +/- ${s.v_variacao}`
+      }));
+    } else {
+      // Busca especificações manuais (Legado)
+      const specs = await this.db`
+        SELECT tipo, valor_especificacao as valor, valor_variacao as variacao
+        FROM lab_system.especificacao
+        WHERE cod_modelo = ${m.cod_modelo}
+      `;
+      modelo.especificacoes = specs.map(s => ({
+        tipo: s.tipo,
+        regra_tipo: 'fixed',
+        v_alvo: s.valor,
+        v_variacao: s.variacao,
+        label: `${s.valor} +/- ${s.variacao}`
+      }));
     }
 
     return modelo;
@@ -129,6 +153,8 @@ export default class ModelModel extends BaseModel {
         m.nome,
         m.tipo,
         ma.nome AS marca,
+        ms.nome AS msc_nome,
+        m.fk_msc_id,
         COALESCE(
           json_agg(
             json_build_object(
@@ -140,8 +166,9 @@ export default class ModelModel extends BaseModel {
         '[]') AS especificacoes
       FROM lab_system.modelo AS m
       JOIN lab_system.marca AS ma ON m.cod_marca = ma.cod_marca
+      LEFT JOIN lab_system.msc AS ms ON m.fk_msc_id = ms.id
       LEFT JOIN lab_system.especificacao AS e ON m.cod_modelo = e.cod_modelo
-      GROUP BY m.cod_modelo, m.nome, m.tipo, ma.nome
+      GROUP BY m.cod_modelo, m.nome, m.tipo, ma.nome, ms.nome
       ORDER BY m.nome;
     `;
 
