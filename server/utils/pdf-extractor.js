@@ -182,7 +182,7 @@ export function parseTechnicalData(text) {
   }
 
   // Limpeza final de ruídos
-  const fieldsToClean = ['lider', 'gerente', 'esteira', 'setor', 'marca', 'requisitante', 'coordenador', 'realizado_por', 'adesivo', 'adesivo_fornecedor', 'cores', 'numero_pedido', 'modelo'];
+  const fieldsToClean = ['lider', 'gerente', 'esteira', 'setor', 'marca', 'requisitante', 'coordenador', 'realizado_por', 'adesivo', 'adesivo_fornecedor', 'cores', 'numero_pedido', 'modelo', 'especificacao_valor'];
   fieldsToClean.forEach(f => {
     if (data[f]) {
       data[f] = data[f].replace(/^[.\-\s:|/|]+/, '')
