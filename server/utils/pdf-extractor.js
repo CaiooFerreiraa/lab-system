@@ -176,12 +176,26 @@ export function parseTechnicalData(text) {
     data.realizado_por = text.match(/(?:realizado[\s]por|executor|tested[\s]by|t[ée]cnico|tech)[\s:]*([^\n]+)/i)?.[1]?.trim();
   }
 
-  // Datas
-  const completedDate = text.match(/completed\s+date\s*(\d{2}\/\d{2}\/\d{4})/i)?.[1];
-  const manufacturedDate = text.match(/manufactured\s+date\s*(\d{2}\/\d{2}\/\d{4})/i)?.[1];
-  const dates = text.match(/\d{2}\/\d{2}\/\d{4}/g) || [];
-  data.data_realizacao = completedDate || dates[0];
-  data.data_colagem = manufacturedDate || dates[1];
+  // Datas (Processamento e Normalização para YYYY-MM-DD)
+  const formatDateForDB = (dateStr) => {
+    if (!dateStr) return null;
+    // Regex mais flexível para capturar D/M/YYYY ou DD/MM/YYYY
+    const parts = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!parts) return null;
+
+    const day = parts[1].padStart(2, '0');
+    const month = parts[2].padStart(2, '0');
+    const year = parts[3];
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const completedDate = text.match(/completed\s+date\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)?.[1];
+  const manufacturedDate = text.match(/manufactured\s+date\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)?.[1];
+  const dates = text.match(/\d{1,2}\/\d{1,2}\/\d{4}/g) || [];
+
+  data.data_realizacao = formatDateForDB(completedDate || dates[0]);
+  data.data_colagem = formatDateForDB(manufacturedDate || dates[1]);
 
   data.cores = data.cores || text.match(/(?:cores|coloração|colors|cor)[\s\-:]*([^\n]+)/i)?.[1]?.trim();
   const pedidoMatch = text.match(/(?:pedido|nbr|order|po\s+no)[\s\-:]*([^\n#]+)/i);
