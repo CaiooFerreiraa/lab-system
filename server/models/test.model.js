@@ -113,19 +113,23 @@ export default class TestModel extends BaseModel {
     return spec.length > 0 ? spec[0].cod_especificacao : 82;
   }
 
-  async #getTipoByNome(nomeTipo) {
+  async #getTipoByNome(identifier) {
     const result = await this.db`
-      SELECT cod_tipo FROM lab_system.tipo WHERE nome::text = ${nomeTipo}
+      SELECT cod_tipo FROM lab_system.tipo 
+      WHERE nome::text = ${identifier} OR cod_tipo::text = ${identifier}::text
+      LIMIT 1
     `;
-    if (result.length === 0) throw new Error(`Tipo "${nomeTipo}" não encontrado.`);
+    if (result.length === 0) throw new Error(`Tipo "${identifier}" não encontrado.`);
     return result[0].cod_tipo;
   }
 
-  async #getSetorByNome(nomeSetor) {
+  async #getSetorByNome(identifier) {
     const result = await this.db`
-      SELECT id FROM lab_system.setor WHERE nome = ${nomeSetor}
+      SELECT id FROM lab_system.setor 
+      WHERE nome = ${identifier} OR id::text = ${identifier}::text
+      LIMIT 1
     `;
-    if (result.length === 0) throw new Error(`Setor "${nomeSetor}" não encontrado.`);
+    if (result.length === 0) throw new Error(`Setor "${identifier}" não encontrado.`);
     return result[0].id;
   }
 
