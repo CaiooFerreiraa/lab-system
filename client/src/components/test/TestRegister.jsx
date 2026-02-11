@@ -241,7 +241,7 @@ export default function TestRegister() {
                       <label>Tipo de Teste *</label>
                       <select value={teste.fk_tipo_cod_tipo} onChange={(e) => updateTest(index, "fk_tipo_cod_tipo", e.target.value)} required>
                         <option value="">Selecione</option>
-                        {typeTestList.map((t) => <option key={t.cod_tipo} value={t.nome}>{t.nome}</option>)}
+                        {typeTestList.map((t) => <option key={t.cod_tipo} value={t.cod_tipo}>{t.nome}</option>)}
                       </select>
                     </div>
                     <div className="form-group">
