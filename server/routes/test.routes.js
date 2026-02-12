@@ -14,6 +14,7 @@ router.delete("/delete", controller.remove);
 router.get("/read", controller.readAll);
 router.get("/read-laudos", controller.readAllLaudos);
 router.get("/laudo/:id", controller.getLaudo);
+router.put("/laudo/:id", controller.editLaudo);
 router.post("/laudo/:laudoId/add-test", controller.addTestToLaudo);
 router.get("/report", controller.report);
 

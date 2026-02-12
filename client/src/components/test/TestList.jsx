@@ -29,6 +29,7 @@ export default function TestList() {
   }, []);
 
   const filtered = laudos.filter(l =>
+    (l.codigo_laudo && l.codigo_laudo.toLowerCase().includes(searchTerm.toLowerCase())) ||
     l.id.toString().includes(searchTerm) ||
     l.modelo_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     l.fk_material.toLowerCase().includes(searchTerm.toLowerCase())
@@ -41,20 +42,20 @@ export default function TestList() {
 
       <PageHeader
         title="Laudos Técnicos"
-        searchPlaceholder="Buscar por ID, modelo ou material..."
+        searchPlaceholder="Buscar por Código, ID, modelo ou material..."
         onSearch={setSearchTerm}
         registerPath="/test/register"
       />
 
       <div className="data-grid">
         {filtered.map((l) => (
-          <div className="data-card" key={l.id}>
+          <div className="data-card" key={l.id} onClick={() => navigate(`/laudo/${l.id}`)} style={{ cursor: 'pointer' }}>
             <div className={`data-card-avatar ${l.status_geral === 'Aprovado' ? 'tag--success' : 'tag--danger'}`}
               style={{ background: l.status_geral === 'Aprovado' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: 'inherit' }}>
               <span className="material-symbols-outlined">{l.status_geral === 'Aprovado' ? 'verified' : 'report'}</span>
             </div>
             <div className="data-card-info">
-              <h3 className="data-card-title">Laudo #{l.id} - {l.modelo_nome}</h3>
+              <h3 className="data-card-title">{l.codigo_laudo || `Laudo #${l.id}`} - {l.modelo_nome}</h3>
               <p className="data-card-subtitle">{l.fk_material} | {l.setor_nome}</p>
               <div className="data-card-tags">
                 <span className={`tag ${l.status_geral === 'Aprovado' ? 'tag--success' : 'tag--danger'}`}>

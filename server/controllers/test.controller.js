@@ -59,4 +59,10 @@ export default class TestController {
     const reportData = await this.repository.getReport();
     res.json({ success: true, data: reportData });
   });
+
+  editLaudo = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await this.repository.editLaudo(id, req.body);
+    res.json({ success: true, message: "Laudo atualizado com sucesso." });
+  });
 }

@@ -13,20 +13,28 @@ export default class TestModel extends BaseModel {
    * Registra um laudo completo com múltiplos testes.
    */
   async registerLaudo({ shared, testes }) {
-    // 1. Criar o Laudo
+    // 1. Gerar Código Sequencial (ex: L-2024-001)
+    const year = new Date().getFullYear();
+    const last = await this.db`SELECT id FROM lab_system.laudo ORDER BY id DESC LIMIT 1`;
+    const nextId = last.length > 0 ? last[0].id + 1 : 1;
+    const codigoLaudo = `L-${year}-${String(nextId).padStart(4, '0')}`;
+
+    // 2. Criar o Laudo
     const laudo = await this.db`
       INSERT INTO lab_system.laudo (
         fk_funcionario_matricula,
         fk_modelo_cod_modelo,
         fk_material,
         fk_cod_setor,
-        observacoes
+        observacoes,
+        codigo_laudo
       ) VALUES (
         ${shared.fk_funcionario_matricula},
         ${shared.fk_modelo_cod_modelo},
         ${shared.fk_material},
         ${shared.fk_cod_setor},
-        ${shared.observacoes || null}
+        ${shared.observacoes || null},
+        ${codigoLaudo}
       )
       RETURNING id
     `;
@@ -43,7 +51,16 @@ export default class TestModel extends BaseModel {
     const statusGeral = results.some(r => r.status === 'Reprovado') ? 'Reprovado' : 'Aprovado';
     await this.db`UPDATE lab_system.laudo SET status_geral = ${statusGeral} WHERE id = ${laudoId}`;
 
-    return { laudoId, total: testes.length, results };
+    const aprovados = results.filter(r => r.status === 'Aprovado').length;
+    const reprovados = results.filter(r => r.status === 'Reprovado').length;
+
+    return {
+      laudoId,
+      total: testes.length,
+      aprovados,
+      reprovados,
+      detalhes: results
+    };
   }
 
   async readAllLaudos() {
@@ -106,6 +123,31 @@ export default class TestModel extends BaseModel {
     await this.db`UPDATE lab_system.laudo SET status_geral = ${statusGeral} WHERE id = ${laudoId}`;
   }
 
+  async editLaudo(id, data) {
+    if (data.fk_cod_setor) {
+      await this.db`
+        UPDATE lab_system.laudo 
+        SET fk_cod_setor = ${data.fk_cod_setor}
+        WHERE id = ${id}
+      `;
+
+      // Opcional: Atualizar o setor de todos os testes vinculados para manter consistência
+      await this.db`
+        UPDATE lab_system.teste
+        SET fk_cod_setor = ${data.fk_cod_setor}
+        WHERE fk_laudo_id = ${id}
+      `;
+    }
+
+    if (data.observacoes !== undefined) {
+      await this.db`
+        UPDATE lab_system.laudo 
+        SET observacoes = ${data.observacoes}
+        WHERE id = ${id}
+      `;
+    }
+  }
+
   // ============================
   // TEST METHODS (INDIVIDUAL)
   // ============================
@@ -138,7 +180,14 @@ export default class TestModel extends BaseModel {
       )
     `;
 
-    return { status: finalStatus };
+    const typeRes = await this.db`SELECT nome FROM lab_system.tipo WHERE cod_tipo = ${fk_tipo_cod_tipo}`;
+    const tipoNome = typeRes[0]?.nome || data.fk_tipo_cod_tipo;
+
+    return {
+      status: finalStatus,
+      tipo: tipoNome,
+      resultado: data.resultado
+    };
   }
 
   async edit({ cod_teste, resultado, status, data_fim, fk_local_cod_local }) {
@@ -241,26 +290,100 @@ export default class TestModel extends BaseModel {
   }
 
   async getReport() {
-    const summary = await this.db`
+    // 1. Resumo Geral
+    const summaryRes = await this.db`
       SELECT
         COUNT(*)::int as total,
-        COUNT(*) FILTER (WHERE status::text = 'Aprovado')::int as aprovados,
-        COUNT(*) FILTER (WHERE status::text = 'Reprovado')::int as reprovados,
-        COUNT(*) FILTER (WHERE status::text = 'Pendente')::int as pendentes
+        COUNT(*) FILTER (WHERE status = 'Aprovado')::int as aprovados,
+        COUNT(*) FILTER (WHERE status = 'Reprovado')::int as reprovados,
+        COUNT(*) FILTER (WHERE status = 'Pendente')::int as pendentes
       FROM lab_system.teste
     `;
 
+    // 2. Por Modelo
     const byModel = await this.db`
       SELECT
         mo.nome as modelo,
+        ma.nome as marca,
+        mo.tipo as tipo_modelo,
         COUNT(*)::int as total,
-        COUNT(*) FILTER (WHERE t.status::text = 'Aprovado')::int as aprovados,
-        COUNT(*) FILTER (WHERE t.status::text = 'Reprovado')::int as reprovados
+        COUNT(*) FILTER (WHERE t.status = 'Aprovado')::int as aprovados,
+        COUNT(*) FILTER (WHERE t.status = 'Reprovado')::int as reprovados,
+        ROUND((COUNT(*) FILTER (WHERE t.status = 'Aprovado')::float / NULLIF(COUNT(*) FILTER (WHERE t.status IN ('Aprovado', 'Reprovado')), 0) * 100)::numeric, 1) as taxa_aprovacao
       FROM lab_system.teste t
       JOIN lab_system.modelo mo ON t.fk_modelo_cod_modelo = mo.cod_modelo
-      GROUP BY mo.nome
+      JOIN lab_system.marca ma ON mo.cod_marca = ma.cod_marca
+      GROUP BY mo.nome, ma.nome, mo.tipo
+      ORDER BY total DESC
     `;
 
-    return { summary: summary[0], byModel };
+    // 3. Por Setor
+    const bySector = await this.db`
+      SELECT
+        s.nome as setor,
+        COUNT(*)::int as total,
+        COUNT(*) FILTER (WHERE t.status = 'Aprovado')::int as aprovados,
+        COUNT(*) FILTER (WHERE t.status = 'Reprovado')::int as reprovados,
+        ROUND((COUNT(*) FILTER (WHERE t.status = 'Aprovado')::float / NULLIF(COUNT(*) FILTER (WHERE t.status IN ('Aprovado', 'Reprovado')), 0) * 100)::numeric, 1) as taxa_aprovacao
+      FROM lab_system.teste t
+      JOIN lab_system.setor s ON t.fk_cod_setor = s.id
+      GROUP BY s.nome
+      ORDER BY total DESC
+    `;
+
+    // 4. Por Tipo de Teste
+    const byType = await this.db`
+      SELECT
+        tp.nome as tipo,
+        COUNT(*)::int as total,
+        COUNT(*) FILTER (WHERE t.status = 'Aprovado')::int as aprovados,
+        COUNT(*) FILTER (WHERE t.status = 'Reprovado')::int as reprovados,
+        ROUND(AVG(NULLIF(t.resultado, 0))::numeric, 2) as media_resultado,
+        ROUND((COUNT(*) FILTER (WHERE t.status = 'Aprovado')::float / NULLIF(COUNT(*) FILTER (WHERE t.status IN ('Aprovado', 'Reprovado')), 0) * 100)::numeric, 1) as taxa_aprovacao
+      FROM lab_system.teste t
+      JOIN lab_system.tipo tp ON t.fk_tipo_cod_tipo = tp.cod_tipo
+      GROUP BY tp.nome
+      ORDER BY total DESC
+    `;
+
+    // 5. Por Marca
+    const byBrand = await this.db`
+      SELECT
+        ma.nome as marca,
+        COUNT(DISTINCT mo.cod_modelo)::int as modelos,
+        COUNT(t.*)::int as total,
+        COUNT(*) FILTER (WHERE t.status = 'Aprovado')::int as aprovados,
+        COUNT(*) FILTER (WHERE t.status = 'Reprovado')::int as reprovados,
+        ROUND((COUNT(*) FILTER (WHERE t.status = 'Aprovado')::float / NULLIF(COUNT(*) FILTER (WHERE t.status IN ('Aprovado', 'Reprovado')), 0) * 100)::numeric, 1) as taxa_aprovacao
+      FROM lab_system.teste t
+      JOIN lab_system.modelo mo ON t.fk_modelo_cod_modelo = mo.cod_modelo
+      JOIN lab_system.marca ma ON mo.cod_marca = ma.cod_marca
+      GROUP BY ma.nome
+      ORDER BY total DESC
+    `;
+
+    // 6. Testes Recentes
+    const recent = await this.db`
+      SELECT 
+        t.cod_teste, t.data_inicio, t.resultado, t.status, t.fk_material as material,
+        tp.nome as tipo_teste, mo.nome as modelo, f.nome as funcionario,
+        e.valor_especificacao as spec_valor, e.valor_variacao as spec_variacao
+      FROM lab_system.teste t
+      JOIN lab_system.tipo tp ON t.fk_tipo_cod_tipo = tp.cod_tipo
+      JOIN lab_system.modelo mo ON t.fk_modelo_cod_modelo = mo.cod_modelo
+      JOIN lab_system.funcionario f ON t.fk_funcionario_matricula = f.matricula
+      LEFT JOIN lab_system.especificacao e ON t.fk_cod_espec = e.cod_especificacao
+      ORDER BY t.data_inicio DESC
+      LIMIT 50
+    `;
+
+    return {
+      summary: summaryRes[0],
+      byModel,
+      bySector,
+      byType,
+      byBrand,
+      recent
+    };
   }
 }

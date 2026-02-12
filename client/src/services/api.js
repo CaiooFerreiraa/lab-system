@@ -88,6 +88,7 @@ export const testApi = {
   list: () => request("/test/read"),
   listLaudos: () => request("/test/read-laudos"),
   getLaudo: (id) => request(`/test/laudo/${id}`),
+  updateLaudo: (id, data) => request(`/test/laudo/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   addTestToLaudo: (laudoId, data) => request(`/test/laudo/${laudoId}/add-test`, { method: "POST", body: JSON.stringify(data) }),
   search: (cod_teste) => request(`/test/search?cod_teste=${cod_teste}`),
   register: (data) => request("/test/register", { method: "POST", body: JSON.stringify(data) }),

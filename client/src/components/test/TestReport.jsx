@@ -86,7 +86,7 @@ export default function TestReport() {
         <div className="summary-card summary-card--warning">
           <span className="material-symbols-outlined summary-card-icon">pending</span>
           <div className="summary-card-data">
-            <span className="summary-card-number">{summary.pendentes + summary.em_andamento}</span>
+            <span className="summary-card-number">{summary.pendentes}</span>
             <span className="summary-card-label">Pendentes</span>
           </div>
         </div>
@@ -123,98 +123,206 @@ export default function TestReport() {
 
       {/* Tab: Gráficos */}
       {activeTab === "charts" && (
-        <div className="report-section">
-          <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+        <div className="report-section" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+          <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '24px', marginBottom: '30px' }}>
 
             {/* Status Distribution */}
-            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-              <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)' }}>pie_chart</span>
+            <div className="chart-card" style={{
+              background: 'var(--bg-card)',
+              padding: '28px',
+              borderRadius: '20px',
+              border: '1px solid var(--border-color)',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-primary)' }}></div>
+              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.25rem' }}>
+                <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)', fontSize: '24px' }}>donut_large</span>
                 Distribuição por Status
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={320}>
                 <PieChart>
                   <Pie
                     data={[
                       { name: 'Aprovados', value: summary.aprovados },
                       { name: 'Reprovados', value: summary.reprovados },
-                      { name: 'Pendentes', value: summary.pendentes + summary.em_andamento }
+                      { name: 'Pendentes', value: summary.pendentes }
                     ]}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
+                    innerRadius={75}
+                    outerRadius={110}
+                    paddingAngle={8}
                     dataKey="value"
+                    animationBegin={0}
+                    animationDuration={1500}
+                    stroke="none"
                   >
-                    <Cell fill="var(--accent-success)" />
-                    <Cell fill="var(--accent-danger)" />
-                    <Cell fill="var(--accent-primary)" />
+                    <Cell fill="hsl(145, 65%, 45%)" />
+                    <Cell fill="hsl(0, 75%, 55%)" />
+                    <Cell fill="hsl(215, 80%, 55%)" />
                   </Pie>
-                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }} />
-                  <Legend verticalAlign="bottom" height={36} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'rgba(22, 25, 35, 0.9)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                      padding: '12px 16px'
+                    }}
+                    itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    iconType="circle"
+                    iconSize={10}
+                    wrapperStyle={{ paddingTop: '20px', fontSize: '13px' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
 
             {/* Performance by Brand */}
-            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-              <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)' }}>label</span>
+            <div className="chart-card" style={{
+              background: 'var(--bg-card)',
+              padding: '28px',
+              borderRadius: '20px',
+              border: '1px solid var(--border-color)',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+              position: 'relative'
+            }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#8b5cf6' }}></div>
+              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.25rem' }}>
+                <span className="material-symbols-outlined" style={{ color: '#8b5cf6', fontSize: '24px' }}>brand_family</span>
                 Performance por Marca
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={(byBrand || []).slice(0, 6)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-                  <XAxis dataKey="marca" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={(byBrand || []).slice(0, 6)} margin={{ bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis
+                    dataKey="marca"
+                    stroke="var(--text-muted)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'var(--text-secondary)' }}
                   />
-                  <Legend />
-                  <Bar dataKey="aprovados" name="Aprovados" stackId="a" fill="var(--accent-success)" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="reprovados" name="Reprovados" stackId="a" fill="var(--accent-danger)" radius={[4, 4, 0, 0]} />
+                  <YAxis
+                    stroke="var(--text-muted)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'var(--text-secondary)' }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                    contentStyle={{
+                      background: 'rgba(22, 25, 35, 0.9)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                      padding: '12px'
+                    }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" stackId="a" fill="hsl(145, 65%, 45%)" radius={[0, 0, 0, 0]} barSize={32} />
+                  <Bar dataKey="reprovados" name="Reprovados" stackId="a" fill="hsl(0, 75%, 55%)" radius={[6, 6, 0, 0]} barSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
             {/* Volume by Sector */}
-            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-              <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)' }}>factory</span>
+            <div className="chart-card" style={{
+              background: 'var(--bg-card)',
+              padding: '28px',
+              borderRadius: '20px',
+              border: '1px solid var(--border-color)',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+              position: 'relative'
+            }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-primary)' }}></div>
+              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.25rem' }}>
+                <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)', fontSize: '24px' }}>factory</span>
                 Volume por Setor (Top 5)
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={(bySector || []).slice(0, 5)} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" horizontal={false} />
-                  <XAxis type="number" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis dataKey="setor" type="category" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} width={100} />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={(bySector || []).slice(0, 5)} layout="vertical" margin={{ left: 20, right: 30 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                  <XAxis type="number" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis
+                    dataKey="setor"
+                    type="category"
+                    stroke="var(--text-muted)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    width={100}
+                    tick={{ fill: 'var(--text-primary)', fontWeight: '500' }}
                   />
-                  <Bar dataKey="total" name="Total de Testes" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} barSize={20} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                    contentStyle={{
+                      background: 'rgba(22, 25, 35, 0.9)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px'
+                    }}
+                  />
+                  <Bar dataKey="total" name="Total de Testes" fill="var(--accent-primary)" radius={[0, 6, 6, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
             {/* Top Models */}
-            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-              <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)' }}>category</span>
+            <div className="chart-card" style={{
+              background: 'var(--bg-card)',
+              padding: '28px',
+              borderRadius: '20px',
+              border: '1px solid var(--border-color)',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+              position: 'relative'
+            }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#ec4899' }}></div>
+              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.25rem' }}>
+                <span className="material-symbols-outlined" style={{ color: '#ec4899', fontSize: '24px' }}>category</span>
                 Modelos Mais Testados
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={(byModel || []).slice(0, 5)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-                  <XAxis dataKey="modelo" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={(byModel || []).slice(0, 5)} margin={{ bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis
+                    dataKey="modelo"
+                    stroke="var(--text-muted)"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'var(--text-secondary)' }}
                   />
-                  <Bar dataKey="total" name="Testes" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  <YAxis
+                    stroke="var(--text-muted)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: 'var(--text-secondary)' }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                    contentStyle={{
+                      background: 'rgba(22, 25, 35, 0.9)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px'
+                    }}
+                  />
+                  <Bar dataKey="total" name="Testes Realizados" fill="url(#colorGradient)" radius={[8, 8, 0, 0]} barSize={40} />
+                  <defs>
+                    <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ec4899" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity={1} />
+                    </linearGradient>
+                  </defs>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -322,7 +430,7 @@ export default function TestReport() {
         <div className="report-section">
           <h2>Desempenho por Setor</h2>
           <div className="report-cards-grid">
-            {bySector.map((row, i) => {
+            {(bySector || []).map((row, i) => {
               const rate = row.taxa_aprovacao;
               return (
                 <div key={i} className="report-stat-card">
@@ -376,7 +484,7 @@ export default function TestReport() {
                 </tr>
               </thead>
               <tbody>
-                {byType.map((row, i) => {
+                {(byType || []).map((row, i) => {
                   const rate = row.taxa_aprovacao;
                   const tag = statusTag(rate);
                   return (
@@ -420,7 +528,7 @@ export default function TestReport() {
                 </tr>
               </thead>
               <tbody>
-                {recent.map((t, i) => {
+                {(recent || []).map((t, i) => {
                   const specMin = t.spec_valor != null ? (parseFloat(t.spec_valor) - parseFloat(t.spec_variacao)).toFixed(1) : null;
                   const specMax = t.spec_valor != null ? (parseFloat(t.spec_valor) + parseFloat(t.spec_variacao)).toFixed(1) : null;
                   return (
