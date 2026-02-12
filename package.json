@@ -8,9 +8,8 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "nodemon server/server.js --ignore client/ --ignore Utilities/",
     "dev:client": "npm --prefix client run dev",
-    "build": "npm --prefix client install && npm --prefix client run build",
-    "install:client": "npm --prefix client install",
-    "postinstall": "npm run install:client"
+    "build": "npm install",
+    "install:client": "npm --prefix client install"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",

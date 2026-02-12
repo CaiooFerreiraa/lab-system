@@ -49,16 +49,18 @@ app.use("/api", routes);
 // Compatibilidade com rotas antigas (sem /api)
 app.use(routes);
 
-// Servir arquivos do Frontend (Apenas em Produção)
+// Servir arquivos do Frontend (Desativado: Frontend hospedado na Vercel)
+/*
 if (process.env.NODE_ENV === "production") {
   const clientPath = path.join(__dirname, "..", "client", "dist");
   app.use(express.static(clientPath));
 
   // Rota para qualquer outra requisição cair no index.html do React (SPA fallback)
-  app.get("*", (req, res) => {
+  app.get("(.*)", (req, res) => {
     res.sendFile(path.join(clientPath, "index.html"));
   });
 }
+*/
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);
