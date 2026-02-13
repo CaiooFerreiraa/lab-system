@@ -37,8 +37,8 @@ export default function TestRegister() {
   // Atualiza os campos automáticos quando o usuário carregar
   useEffect(() => {
     if (user) {
-      setFkFuncionario(user.fk_funcionario_matricula || "");
-      setProductSetor(user.fk_cod_setor || "");
+      setFkFuncionario(user.fk_funcionario_matricula || "11111");
+      setProductSetor(user.fk_cod_setor || 5);
     }
   }, [user]);
 
