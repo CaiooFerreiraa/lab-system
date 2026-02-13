@@ -1,15 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
 import { mscApi, enumApi } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { getSectorPermissions } from "../../config/permissions";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
 
 export default function MSCRegister() {
   const { id } = useParams();
   const isEditing = !!id;
+  const { user } = useAuth();
+  const perms = useMemo(
+    () => getSectorPermissions(user?.setor_nome, user?.role, user?.config_perfil),
+    [user]
+  );
+
+  // Tipos permitidos para este usuário
+  const materialOptions = useMemo(() => {
+    const all = [
+      { value: "DN", label: "DN" },
+      { value: "BN", label: "BN" },
+      { value: "Base", label: "Base" }
+    ];
+    if (!perms.allowedMaterialTypes) return all;
+    return all.filter(opt => perms.allowedMaterialTypes.includes(opt.value));
+  }, [perms.allowedMaterialTypes]);
 
   const [nome, setNome] = useState("");
-  const [tipo, setTipo] = useState("DN");
+  const [tipo, setTipo] = useState(materialOptions[0]?.value || "DN");
   const [descricao, setDescricao] = useState("");
   const [especificacoes, setEspecificacoes] = useState([]);
   const [typeTestList, setTypeTestList] = useState([]);
@@ -106,9 +124,9 @@ export default function MSCRegister() {
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Tipo de Material *</label>
                 <select value={tipo} onChange={(e) => setTipo(e.target.value)} required>
-                  <option value="DN">DN</option>
-                  <option value="BN">BN</option>
-                  <option value="Base">Base</option>
+                  {materialOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>

@@ -4,8 +4,7 @@ async function migrate() {
   console.log("🚀 Iniciando migração de Balanças...");
 
   try {
-    // Neon (serverless) usa consultas em fatias ou strings simples retornando promises
-    await db(`
+    await db`
       CREATE TABLE IF NOT EXISTS lab_system.balanca (
         id SERIAL PRIMARY KEY,
         patrimonio VARCHAR(50) NOT NULL UNIQUE,
@@ -14,8 +13,8 @@ async function migrate() {
         status VARCHAR(20) CHECK (status IN ('Aprovado', 'Reprovado')),
         diferenca_reprovacao NUMERIC,
         data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+      )
+    `;
     console.log("✅ Tabela 'balanca' criada com sucesso!");
   } catch (err) {
     console.error("❌ Erro na migração:", err);

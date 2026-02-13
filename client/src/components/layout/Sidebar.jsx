@@ -1,5 +1,7 @@
-import { Link, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { getSectorPermissions } from "../../config/permissions";
 
 const NAV_GROUPS = [
   {
@@ -36,8 +38,15 @@ const NAV_GROUPS = [
     items: [
       { path: "/test", label: "Lançar Testes", icon: "science", excludes: ["/test/report"] },
       { path: "/test/report", label: "Relatórios", icon: "bar_chart", exact: true },
-      { path: "/descolagem", label: "Descolagem", icon: "picture_as_pdf", excludes: ["/descolagem/report"] },
-      { path: "/descolagem/report", label: "Perf. Descolagem", icon: "analytics", exact: true },
+    ]
+  },
+  {
+    id: "peeling",
+    label: "Descolagem & PDF",
+    icon: "layers",
+    items: [
+      { path: "/descolagem", label: "Enviar PDF", icon: "picture_as_pdf", excludes: ["/descolagem/report"] },
+      { path: "/descolagem/report", label: "Performance", icon: "analytics", exact: true },
     ]
   },
   {
@@ -47,18 +56,31 @@ const NAV_GROUPS = [
     items: [
       { path: "/balancas", label: "Balanças", icon: "scale" },
     ]
+  },
+  {
+    id: "admin",
+    label: "Administração",
+    icon: "admin_panel_settings",
+    // Visível apenas para admin e moderator (gerenciado no filtro abaixo)
+    requiredRoles: ["admin", "moderator"],
+    items: [
+      { path: "/users", label: "Usuários", icon: "manage_accounts" },
+    ]
   }
 ];
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme') || 'dark');
   const [openGroups, setOpenGroups] = useState({
     management: true,
     engineering: true,
     quality: true,
-    inventory: true
+    inventory: true,
+    admin: true
   });
 
   const toggleGroup = (id) => {
@@ -71,6 +93,38 @@ export default function Sidebar() {
     localStorage.setItem('theme', nextTheme);
     setTheme(nextTheme);
   };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  // Filtra os grupos de navegação baseado no cargo + setor do usuário
+  const getVisibleGroups = () => {
+    const userRole = user?.role;
+    const userSector = user?.setor_nome;
+    const perms = getSectorPermissions(userSector, userRole);
+
+    return NAV_GROUPS.filter((group) => {
+      // Filtro por cargo: se o grupo exige roles específicas
+      if (group.requiredRoles && !group.requiredRoles.includes(userRole)) {
+        return false;
+      }
+
+      // Sem restrição de setor → vê tudo
+      if (!perms.isRestricted || !perms.sidebarGroups) return true;
+
+      // Com restrição: vê apenas os grupos permitidos
+      return perms.sidebarGroups.includes(group.id);
+    });
+  };
+
+  const visibleGroups = getVisibleGroups();
+
+  // Pega a primeira letra do nome ou email para o avatar
+  const userInitial = user?.nome
+    ? user.nome.charAt(0).toUpperCase()
+    : user?.email?.charAt(0).toUpperCase() || "U";
 
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
@@ -89,7 +143,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {NAV_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.id} className="nav-group">
             {group.label !== "Main" && !collapsed && (
               <button className="nav-group-header" onClick={() => toggleGroup(group.id)}>
@@ -132,16 +186,41 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="sidebar-footer" style={{ padding: '12px', borderTop: '1px solid var(--border-color)' }}>
+      <div className="sidebar-footer">
+        {/* User Info */}
+        <div className="sidebar-user">
+          <div className="sidebar-user-avatar">{userInitial}</div>
+          {!collapsed && (
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">{user?.nome || user?.email || "Usuário"}</span>
+              <span className="sidebar-user-role">
+                {user?.role === 'admin' ? 'Administrador' : user?.role === 'moderator' ? 'Moderador' : 'Operador'}
+                {user?.setor_nome ? ` · ${user.setor_nome}` : ''}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Theme Toggle */}
         <button
-          className="nav-item"
-          style={{ width: '100%', justifyContent: collapsed ? 'center' : 'flex-start', padding: '10px' }}
+          className="nav-item sidebar-action-btn"
           onClick={toggleTheme}
+          title={collapsed ? (theme === 'light' ? 'Modo Escuro' : 'Modo Claro') : undefined}
         >
           <span className="material-symbols-outlined nav-icon">
             {theme === 'light' ? 'dark_mode' : 'light_mode'}
           </span>
           {!collapsed && <span className="nav-label">{theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}</span>}
+        </button>
+
+        {/* Logout */}
+        <button
+          className="nav-item sidebar-action-btn sidebar-logout-btn"
+          onClick={handleLogout}
+          title={collapsed ? "Sair" : undefined}
+        >
+          <span className="material-symbols-outlined nav-icon">logout</span>
+          {!collapsed && <span className="nav-label">Sair</span>}
         </button>
       </div>
     </aside>

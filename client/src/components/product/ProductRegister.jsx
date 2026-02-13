@@ -1,29 +1,42 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { productApi, sectorApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
+import { useAuth } from "../../contexts/AuthContext";
+import { getSectorPermissions, filterMaterialTypes } from "../../config/permissions";
 
 export default function ProductRegister() {
+  const { user } = useAuth();
+  const sectorPerms = useMemo(
+    () => getSectorPermissions(user?.setor_nome, user?.role),
+    [user?.setor_nome, user?.role]
+  );
+
+  const allTypes = ["DN", "BN", "Base"];
+  const allowedTypes = useMemo(
+    () => filterMaterialTypes(allTypes, sectorPerms.allowedMaterialTypes),
+    [sectorPerms.allowedMaterialTypes]
+  );
+
   const [product, setProduct] = useState("");
-  const [sector, setSector] = useState("");
+  const [sector, setSector] = useState(user?.fk_cod_setor || "");
   const [type, setType] = useState("");
-  const [sectors, setSectors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
   const navigate = useNavigate();
 
+  // Atualiza campo de setor automágicamente
   useEffect(() => {
-    const fetchSectors = async () => {
-      try {
-        const res = await sectorApi.list();
-        setSectors(res.data || res.setores || []);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchSectors();
-  }, []);
+    if (user?.fk_cod_setor) setSector(user.fk_cod_setor);
+  }, [user]);
+
+  // Se só tem um tipo permitido, auto-seleciona
+  useEffect(() => {
+    if (allowedTypes.length === 1 && !type) {
+      setType(allowedTypes[0]);
+    }
+  }, [allowedTypes, type]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,8 +45,7 @@ export default function ProductRegister() {
       await productApi.register({ referencia: product, tipo: type, setor: sector });
       setPopup({ show: true, msg: "Produto cadastrado com sucesso!" });
       setProduct("");
-      setSector("");
-      setType("");
+      setType(allowedTypes.length === 1 ? allowedTypes[0] : "");
     } catch (err) {
       setPopup({ show: true, msg: err.message });
     } finally {
@@ -52,6 +64,15 @@ export default function ProductRegister() {
       <main className="form-page">
         <header className="form-page-header">
           <h1>Registrar Produto</h1>
+          <p className="text-secondary" style={{ fontSize: '0.85rem', marginTop: '4px' }}>
+            Setor: <strong>{user?.setor_nome || 'N/A'}</strong>
+          </p>
+          {sectorPerms.isRestricted && sectorPerms.allowedMaterialTypes && (
+            <p className="text-secondary" style={{ fontSize: '0.85rem', marginTop: '4px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', verticalAlign: 'middle', marginRight: '4px' }}>info</span>
+              Seu setor permite registrar apenas: <strong>{sectorPerms.allowedMaterialTypes.join(", ")}</strong>
+            </p>
+          )}
         </header>
 
         <div className="form-container">
@@ -59,7 +80,7 @@ export default function ProductRegister() {
             <div className="form-group">
               <label>Tipo *</label>
               <div className="radio-group">
-                {["DN", "BN", "Base"].map((t) => (
+                {allowedTypes.map((t) => (
                   <label key={t} className={`radio-option ${type === t ? "radio-option--active" : ""}`}>
                     <input type="radio" name="tipo" value={t} checked={type === t}
                       onChange={(e) => setType(e.target.value)} />
@@ -78,16 +99,6 @@ export default function ProductRegister() {
                   setProduct(value);
                 }}
               />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="sector">Setor *</label>
-              <select id="sector" value={sector} onChange={(e) => setSector(e.target.value)} required>
-                <option value="">Selecione um Setor</option>
-                {sectors.map((s, i) => (
-                  <option key={i} value={s.nome}>{s.nome}</option>
-                ))}
-              </select>
             </div>
 
             <div className="form-actions">

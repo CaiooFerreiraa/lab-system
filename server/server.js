@@ -40,8 +40,11 @@ app.use(
   })
 );
 
-// Servir uploads (PDFs)
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Servir uploads (PDFs) com CORS explícito
+app.use("/uploads", cors(), (req, res, next) => {
+  console.log(`📂 Acessando arquivo: ${req.path}`);
+  next();
+}, express.static(path.join(__dirname, "uploads")));
 
 // API Routes
 app.use("/api", routes);

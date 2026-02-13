@@ -8,6 +8,7 @@ export default function MSCList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all"); // all, DN, BN, Base
+  const [viewMsc, setViewMsc] = useState(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -23,6 +24,19 @@ export default function MSCList() {
     fetch();
   }, []);
 
+  const handleView = async (id) => {
+    setLoading(true);
+    try {
+      const res = await mscApi.getOne(id);
+      setViewMsc(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao carregar detalhes da MSC");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredMscs = mscs.filter(m => {
     const matchesSearch = m.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (m.descricao && m.descricao.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -33,6 +47,72 @@ export default function MSCList() {
   return (
     <>
       {loading && <Loader />}
+
+      {/* Modal de Visualização */}
+      {viewMsc && (
+        <div className="popup-overlay" onClick={() => setViewMsc(null)}>
+          <div className="popup-content" style={{ maxWidth: '800px', width: '90%', maxHeight: '90vh', overflowY: 'auto', alignItems: 'flex-start', textAlign: 'left' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              <h2 style={{ margin: 0 }}>{viewMsc.nome}</h2>
+              <button className="icon-btn" onClick={() => setViewMsc(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', width: '100%', marginBottom: '24px' }}>
+              <div>
+                <span className="text-secondary" style={{ fontSize: '0.85rem' }}>Tipo de Material</span>
+                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{viewMsc.tipo}</div>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <span className="text-secondary" style={{ fontSize: '0.85rem' }}>Descrição</span>
+                <div>{viewMsc.descricao || "Sem descrição"}</div>
+              </div>
+            </div>
+
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '12px', color: 'var(--accent-primary)' }}>Especificações Técnicas</h3>
+
+            <div className="report-table-wrapper">
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Ensaio</th>
+                    <th>Regra</th>
+                    <th>Valores</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewMsc.especificacoes?.length > 0 ? viewMsc.especificacoes.map((spec, i) => (
+                    <tr key={i}>
+                      <td><strong>{spec.tipo_teste}</strong></td>
+                      <td>
+                        {spec.regra_tipo === 'fixed' ? 'Fixo (+/-)' :
+                          spec.regra_tipo === 'range' ? 'Intervalo' :
+                            spec.regra_tipo === 'max' ? 'Máximo' : 'Mínimo'}
+                      </td>
+                      <td>
+                        {spec.regra_tipo === 'fixed' ? `${spec.v_alvo ?? '?'} ± ${spec.v_variacao ?? '?'}` :
+                          spec.regra_tipo === 'range' ? `${spec.v_min ?? '?'} a ${spec.v_max ?? '?'}` :
+                            spec.regra_tipo === 'max' ? `< ${spec.v_max ?? '?'}` :
+                              `> ${spec.v_min ?? '?'}`}
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan="3" style={{ textAlign: 'center', color: '#888' }}>Nenhuma especificação cadastrada.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+              <Link to={`/msc/edit/${viewMsc.id}`} className="btn btn-primary">
+                <span className="material-symbols-outlined">edit</span> Editar
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="list-page">
         <header className="list-page-header">
           <div className="page-header-top">
@@ -92,6 +172,9 @@ export default function MSCList() {
                   </div>
                 </div>
                 <div className="data-card-actions">
+                  <button className="icon-btn" title="Visualizar Detalhes" onClick={() => handleView(msc.id)}>
+                    <span className="material-symbols-outlined">visibility</span>
+                  </button>
                   <Link to={`/msc/edit/${msc.id}`} className="icon-btn" title="Editar MSC">
                     <span className="material-symbols-outlined">edit</span>
                   </Link>

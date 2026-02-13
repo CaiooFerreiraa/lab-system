@@ -6,6 +6,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      "/uploads": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
       "/api": {
         target: "http://localhost:5000",
         changeOrigin: true,
@@ -43,6 +47,14 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/msc": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+      "/auth": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+      "/balanca": {
         target: "http://localhost:5000",
         changeOrigin: true,
       },

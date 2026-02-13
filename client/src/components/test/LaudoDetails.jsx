@@ -1,17 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { testApi, enumApi, sectorApi } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { getSectorPermissions } from "../../config/permissions";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
 
 export default function LaudoDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [laudo, setLaudo] = useState(null);
   const [testTypes, setTestTypes] = useState([]);
   const [sectors, setSectors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
+
+  const perms = useMemo(() => getSectorPermissions(user?.setor_nome, user?.role), [user]);
+  const canEditResults = perms.canEditTestResults;
 
   const [isEditingSector, setIsEditingSector] = useState(false);
   const [tempSector, setTempSector] = useState("");
@@ -58,6 +65,7 @@ export default function LaudoDetails() {
 
   const handleAddTest = async (e) => {
     e.preventDefault();
+    if (!canEditResults) return;
     setLoading(true);
     try {
       await testApi.addTestToLaudo(id, newTest);
@@ -73,6 +81,7 @@ export default function LaudoDetails() {
   };
 
   const handleUpdateTestStatus = async (codTeste, resultado) => {
+    if (!canEditResults) return;
     setLoading(true);
     try {
       await testApi.update({ cod_teste: codTeste, resultado: parseFloat(resultado) });
@@ -144,7 +153,7 @@ export default function LaudoDetails() {
 
             <div className="info-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', position: 'relative' }}>
               <span className="info-label" style={{ display: 'flex', justifyContent: 'space-between', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                Setor
+                Setor (Requisição)
                 {!isEditingSector && (
                   <button className="icon-btn btn-sm" onClick={() => setIsEditingSector(true)} title="Editar Setor">
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit</span>
@@ -201,15 +210,17 @@ export default function LaudoDetails() {
             marginBottom: '24px'
           }}>
             <h3 style={{ margin: 0 }}>Testes Vinculados</h3>
-            <button className={`btn btn-sm ${showAddForm ? 'btn-secondary' : 'btn-primary'}`}
-              onClick={() => setShowAddForm(!showAddForm)}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="material-symbols-outlined">{showAddForm ? 'close' : 'add'}</span>
-              {showAddForm ? "Cancelar" : "Novo Teste"}
-            </button>
+            {canEditResults && (
+              <button className={`btn btn-sm ${showAddForm ? 'btn-secondary' : 'btn-primary'}`}
+                onClick={() => setShowAddForm(!showAddForm)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined">{showAddForm ? 'close' : 'add'}</span>
+                {showAddForm ? "Cancelar" : "Novo Teste"}
+              </button>
+            )}
           </div>
 
-          {showAddForm && (
+          {showAddForm && canEditResults && (
             <div style={{
               background: 'rgba(60,120,255,0.05)',
               padding: '24px',
@@ -252,7 +263,7 @@ export default function LaudoDetails() {
                   <th style={{ textAlign: 'left', padding: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>RESULTADO</th>
                   <th style={{ textAlign: 'left', padding: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>STATUS</th>
                   <th style={{ textAlign: 'left', padding: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>DATA</th>
-                  <th style={{ textAlign: 'center', padding: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>AÇÕES</th>
+                  {canEditResults && <th style={{ textAlign: 'center', padding: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>AÇÕES</th>}
                 </tr>
               </thead>
               <tbody>
@@ -264,6 +275,7 @@ export default function LaudoDetails() {
                     <td style={{ padding: '16px' }}>
                       <input
                         type="number"
+                        disabled={!canEditResults}
                         defaultValue={t.resultado}
                         onBlur={(e) => handleUpdateTestStatus(t.cod_teste, e.target.value)}
                         style={{
@@ -273,7 +285,8 @@ export default function LaudoDetails() {
                           border: '1px solid var(--border-color)',
                           borderRadius: '6px',
                           color: 'var(--text-primary)',
-                          fontWeight: '500'
+                          fontWeight: '500',
+                          opacity: canEditResults ? 1 : 0.7
                         }}
                       />
                     </td>
@@ -286,24 +299,26 @@ export default function LaudoDetails() {
                     <td style={{ padding: '16px', color: 'var(--text-muted)' }}>
                       {t.data_fim ? new Date(t.data_fim).toLocaleDateString() : "-"}
                     </td>
-                    <td style={{ padding: '16px', borderTopRightRadius: '8px', borderBottomRightRadius: '8px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <Link to={`/test/edit/${t.cod_teste}`} className="icon-btn" title="Editar detalhes">
-                          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
-                        </Link>
-                        <button
-                          className="icon-btn icon-btn--danger"
-                          onClick={async () => {
-                            if (confirm("Deseja remover este teste do laudo?")) {
-                              await testApi.remove(t.cod_teste);
-                              fetchData();
-                            }
-                          }}
-                        >
-                          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
-                        </button>
-                      </div>
-                    </td>
+                    {canEditResults && (
+                      <td style={{ padding: '16px', borderTopRightRadius: '8px', borderBottomRightRadius: '8px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          <Link to={`/test/edit/${t.cod_teste}`} className="icon-btn" title="Editar detalhes">
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
+                          </Link>
+                          <button
+                            className="icon-btn icon-btn--danger"
+                            onClick={async () => {
+                              if (confirm("Deseja remover este teste do laudo?")) {
+                                await testApi.remove(t.cod_teste);
+                                fetchData();
+                              }
+                            }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

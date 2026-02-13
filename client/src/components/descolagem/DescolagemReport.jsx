@@ -81,86 +81,96 @@ export default function DescolagemReport() {
       </div>
 
       {/* Grid de Gráficos de Performance */}
-      <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+      <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '24px', marginBottom: '30px' }}>
 
-        {/* Gráfico por Marca */}
-        <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px' }}>
-          <h3 style={{ marginBottom: '15px' }}>Volume por Marca</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartDataBrand}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="name" stroke="#888" />
-              <YAxis stroke="#888" />
-              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid #444' }} />
-              <Legend />
-              <Bar dataKey="aprovados" name="Aprovados" stackId="a" fill="var(--accent-success)" />
-              <Bar dataKey="reprovados" name="Reprovados" stackId="a" fill="var(--accent-danger)" />
+        {/* Gráfico por Marca (Lado a Lado) */}
+        <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', fontWeight: 600 }}>Performance por Marca</h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={chartDataBrand} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <XAxis dataKey="name" stroke="#888" tick={{ fontSize: 12 }} />
+              <YAxis stroke="#888" tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}
+                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} />
+              <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Gráfico por Modelo */}
-        <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px' }}>
-          <h3 style={{ marginBottom: '15px' }}>Volume por Modelo</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartDataModel}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="name" stroke="#888" />
-              <YAxis stroke="#888" />
-              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid #444' }} />
-              <Legend />
-              <Bar dataKey="total" name="Total de Laudos" fill="var(--accent-primary)" />
+        <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', fontWeight: 600 }}>Volume por Modelo</h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={chartDataModel} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+              <XAxis type="number" stroke="#888" hide />
+              <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 12 }} />
+              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} />
+              <Bar dataKey="total" name="Total Enviado" fill="var(--accent-primary)" radius={[0, 4, 4, 0]} barSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Gráfico por Líder */}
-        <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px' }}>
-          <h3 style={{ marginBottom: '15px' }}>Status por Líder</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartDataLider}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="name" stroke="#888" />
-              <YAxis stroke="#888" />
-              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid #444' }} />
-              <Legend />
-              <Bar dataKey="aprovados" stackId="a" fill="var(--accent-success)" />
-              <Bar dataKey="reprovados" stackId="a" fill="var(--accent-danger)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {/* Comparativo de Gestão */}
+        <div className="chart-card" style={{ gridColumn: '1 / -1', background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', fontWeight: 600 }}>Performance da Gestão (Líderes vs Coordenadores)</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
-        {/* Gráfico por Coordenador */}
-        <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px' }}>
-          <h3 style={{ marginBottom: '15px' }}>Status por Coordenador</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartDataCoordenador}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="name" stroke="#888" />
-              <YAxis stroke="#888" />
-              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid #444' }} />
-              <Legend />
-              <Bar dataKey="aprovados" stackId="a" fill="var(--accent-success)" />
-              <Bar dataKey="reprovados" stackId="a" fill="var(--accent-danger)" />
-            </BarChart>
-          </ResponsiveContainer>
+            {/* Líderes */}
+            <div style={{ height: 300 }}>
+              <h4 style={{ textAlign: 'center', marginBottom: '10px', color: '#888', fontSize: '0.9rem' }}>Líderes</h4>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartDataLider}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="name" stroke="#888" />
+                  <YAxis stroke="#888" />
+                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" />
+                  <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Coordenadores */}
+            <div style={{ height: 300 }}>
+              <h4 style={{ textAlign: 'center', marginBottom: '10px', color: '#888', fontSize: '0.9rem' }}>Coordenadores</h4>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartDataCoordenador}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="name" stroke="#888" />
+                  <YAxis stroke="#888" />
+                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" />
+                  <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+          </div>
         </div>
 
         {/* Gráfico por Esteira */}
-        <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px' }}>
-          <h3 style={{ marginBottom: '15px' }}>Volume por Esteira</h3>
+        <div className="chart-card" style={{ gridColumn: '1 / -1', background: 'var(--bg-card)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <h3 style={{ marginBottom: '20px', fontSize: '1.1rem', fontWeight: 600 }}>Performance por Esteira</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartDataEsteira}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis dataKey="name" stroke="#888" />
               <YAxis stroke="#888" />
-              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid #444' }} />
+              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }} />
               <Legend />
-              <Bar dataKey="aprovados" stackId="a" fill="var(--accent-success)" />
-              <Bar dataKey="reprovados" stackId="a" fill="var(--accent-danger)" />
+              <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" barSize={40} />
+              <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" barSize={40} />
             </BarChart>
           </ResponsiveContainer>
         </div>
+
       </div>
 
       {/* Tabs para Tabelas Detalhadas */}

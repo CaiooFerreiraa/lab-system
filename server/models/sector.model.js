@@ -5,11 +5,11 @@ export default class SectorModel extends BaseModel {
     super(db);
   }
 
-  async register({ nome }) {
+  async register({ nome, config_perfil }) {
     try {
       await this.db`
-        INSERT INTO lab_system.setor(nome)
-        VALUES (${nome})
+        INSERT INTO lab_system.setor(nome, config_perfil)
+        VALUES (${nome}, ${config_perfil || 'padrao'})
       `;
     } catch (error) {
       if (error.message.includes("duplicate") && error.message.includes("key")) {
@@ -21,7 +21,7 @@ export default class SectorModel extends BaseModel {
 
   async search(nome) {
     const setor = await this.db`
-      SELECT nome
+      SELECT id, nome, config_perfil
       FROM lab_system.setor
       WHERE nome = ${nome}
     `;
@@ -39,10 +39,12 @@ export default class SectorModel extends BaseModel {
     return materiais;
   }
 
-  async edit(oldName, newName) {
+  async edit(oldName, newName, config_perfil) {
     await this.db`
       UPDATE lab_system.setor
-      SET nome = ${newName}
+      SET 
+        nome = ${newName},
+        config_perfil = ${config_perfil || 'padrao'}
       WHERE nome = ${oldName}
     `;
   }
@@ -56,7 +58,7 @@ export default class SectorModel extends BaseModel {
 
   async readAll() {
     const setores = await this.db`
-      SELECT id, nome
+      SELECT id, nome, config_perfil
       FROM lab_system.setor
       ORDER BY nome ASC;
     `;

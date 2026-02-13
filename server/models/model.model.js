@@ -76,18 +76,23 @@ export default class ModelModel extends BaseModel {
       const specs = await this.db`
         SELECT * FROM lab_system.msc_especificacao WHERE fk_msc_id = ${m.fk_msc_id}
       `;
-      modelo.especificacoes = specs.map(s => ({
-        tipo: s.tipo_teste,
-        regra_tipo: s.regra_tipo,
-        v_alvo: s.v_alvo,
-        v_variacao: s.v_variacao,
-        v_min: s.v_min,
-        v_max: s.v_max,
-        label: s.regra_tipo === 'range' ? `${s.v_min} a ${s.v_max}` :
-          s.regra_tipo === 'max' ? `< ${s.v_max}` :
-            s.regra_tipo === 'min' ? `> ${s.v_min}` :
-              `${s.v_alvo} +/- ${s.v_variacao}`
-      }));
+      modelo.especificacoes = specs.map(s => {
+        let labelString = '';
+        if (s.regra_tipo === 'range') labelString = `${s.v_min} a ${s.v_max}`;
+        else if (s.regra_tipo === 'max') labelString = `< ${s.v_max}`;
+        else if (s.regra_tipo === 'min') labelString = `> ${s.v_min}`;
+        else labelString = `${s.v_alvo ?? '?'} ± ${s.v_variacao ?? '?'}`;
+
+        return {
+          tipo: s.tipo_teste,
+          regra_tipo: s.regra_tipo,
+          v_alvo: s.v_alvo,
+          v_variacao: s.v_variacao,
+          v_min: s.v_min,
+          v_max: s.v_max,
+          label: labelString
+        };
+      });
     } else {
       // Busca especificações manuais (Legado)
       const specs = await this.db`
@@ -100,7 +105,7 @@ export default class ModelModel extends BaseModel {
         regra_tipo: 'fixed',
         v_alvo: s.valor,
         v_variacao: s.variacao,
-        label: `${s.valor} +/- ${s.variacao}`
+        label: `${s.valor ?? '?'} ± ${s.variacao ?? '?'}`
       }));
     }
 

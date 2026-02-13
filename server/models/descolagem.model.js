@@ -73,11 +73,14 @@ export default class DescolagemModel extends BaseModel {
       SELECT 
         lider,
         COUNT(*)::int as total,
-        COUNT(*) FILTER (WHERE status_final::text = 'Aprovado')::int as aprovados,
-        COUNT(*) FILTER (WHERE status_final::text = 'Reprovado')::int as reprovados,
-        ROUND((COUNT(*) FILTER (WHERE status_final::text = 'Aprovado')::numeric / NULLIF(COUNT(*), 0)) * 100, 1) as taxa_aprovacao
+        COUNT(*) FILTER (WHERE status_final = 'Aprovado')::int as aprovados,
+        COUNT(*) FILTER (WHERE status_final = 'Reprovado')::int as reprovados,
+        CASE 
+          WHEN COUNT(*) > 0 THEN ROUND((COUNT(*) FILTER (WHERE status_final = 'Aprovado')::numeric / COUNT(*)::numeric) * 100, 1)
+          ELSE 0 
+        END as taxa_aprovacao
       FROM lab_system.descolagem
-      WHERE lider IS NOT NULL
+      WHERE lider IS NOT NULL AND lider <> ''
       GROUP BY lider
       ORDER BY total DESC
     `;
@@ -86,11 +89,14 @@ export default class DescolagemModel extends BaseModel {
       SELECT 
         coordenador,
         COUNT(*)::int as total,
-        COUNT(*) FILTER (WHERE status_final::text = 'Aprovado')::int as aprovados,
-        COUNT(*) FILTER (WHERE status_final::text = 'Reprovado')::int as reprovados,
-        ROUND((COUNT(*) FILTER (WHERE status_final::text = 'Aprovado')::numeric / NULLIF(COUNT(*), 0)) * 100, 1) as taxa_aprovacao
+        COUNT(*) FILTER (WHERE status_final = 'Aprovado')::int as aprovados,
+        COUNT(*) FILTER (WHERE status_final = 'Reprovado')::int as reprovados,
+        CASE 
+           WHEN COUNT(*) > 0 THEN ROUND((COUNT(*) FILTER (WHERE status_final = 'Aprovado')::numeric / COUNT(*)::numeric) * 100, 1)
+           ELSE 0 
+        END as taxa_aprovacao
       FROM lab_system.descolagem
-      WHERE coordenador IS NOT NULL
+      WHERE coordenador IS NOT NULL AND coordenador <> ''
       GROUP BY coordenador
       ORDER BY total DESC
     `;
@@ -99,11 +105,14 @@ export default class DescolagemModel extends BaseModel {
       SELECT 
         esteira,
         COUNT(*)::int as total,
-        COUNT(*) FILTER (WHERE status_final::text = 'Aprovado')::int as aprovados,
-        COUNT(*) FILTER (WHERE status_final::text = 'Reprovado')::int as reprovados,
-        ROUND((COUNT(*) FILTER (WHERE status_final::text = 'Aprovado')::numeric / NULLIF(COUNT(*), 0)) * 100, 1) as taxa_aprovacao
+        COUNT(*) FILTER (WHERE status_final = 'Aprovado')::int as aprovados,
+        COUNT(*) FILTER (WHERE status_final = 'Reprovado')::int as reprovados,
+        CASE 
+           WHEN COUNT(*) > 0 THEN ROUND((COUNT(*) FILTER (WHERE status_final = 'Aprovado')::numeric / COUNT(*)::numeric) * 100, 1)
+           ELSE 0 
+        END as taxa_aprovacao
       FROM lab_system.descolagem
-      WHERE esteira IS NOT NULL
+      WHERE esteira IS NOT NULL AND esteira <> ''
       GROUP BY esteira
       ORDER BY total DESC
     `;

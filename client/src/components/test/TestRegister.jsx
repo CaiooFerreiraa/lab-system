@@ -1,12 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { testApi, enumApi, employeeApi, modelApi, sectorApi, productApi, mscApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
+import { useAuth } from "../../contexts/AuthContext";
+import { getSectorPermissions, filterTestTypes, filterMaterials } from "../../config/permissions";
 
 const emptyTest = () => ({ fk_tipo_cod_tipo: "", resultado: "", fk_local_cod_local: "", data_fim: "" });
 
 export default function TestRegister() {
+  const { user } = useAuth();
+  const sectorPerms = useMemo(
+    () => getSectorPermissions(user?.setor_nome, user?.role),
+    [user?.setor_nome, user?.role]
+  );
+
   // Listas do Banco
   const [typeTestList, setTypeTestList] = useState([]);
   const [employeeList, setEmployeeList] = useState([]);
@@ -19,12 +27,34 @@ export default function TestRegister() {
   const [filteredMaterials, setFilteredMaterials] = useState([]);
 
   // Dados compartilhados (Shared)
-  const [fkFuncionario, setFkFuncionario] = useState("");
+  const [fkFuncionario, setFkFuncionario] = useState(user?.fk_funcionario_matricula || "");
   const [fkModelo, setFkModelo] = useState("");
   const [fkMaterial, setFkMaterial] = useState("");
   const [productType, setProductType] = useState(""); // BN/DN/Base
-  const [productSetor, setProductSetor] = useState("");
+  const [productSetor, setProductSetor] = useState(user?.fk_cod_setor || "");
   const [observacoes, setObservacoes] = useState("");
+
+  // Atualiza os campos automáticos quando o usuário carregar
+  useEffect(() => {
+    if (user) {
+      setFkFuncionario(user.fk_funcionario_matricula || "");
+      setProductSetor(user.fk_cod_setor || "");
+    }
+  }, [user]);
+
+  // Metadados de Produção (específicos para Pré-Fabricado / Descolagem)
+  const [metadata, setMetadata] = useState({
+    requisitante: "",
+    lider: "",
+    coordenador: "",
+    gerente: "",
+    esteira: "",
+    adesivo: "",
+    adesivo_fornecedor: "",
+    lado: "Único",
+    data_realizacao: "",
+    data_colagem: ""
+  });
 
   // Testes individuais
   const [testes, setTestes] = useState([emptyTest()]);
@@ -40,6 +70,17 @@ export default function TestRegister() {
   const [popup, setPopup] = useState({ show: false, msg: "" });
   const [results, setResults] = useState(null);
   const navigate = useNavigate();
+
+  // Tipos de teste filtrados pelas permissões do setor
+  const allowedTestTypes = useMemo(
+    () => filterTestTypes(typeTestList, sectorPerms.allowedTestTypes),
+    [typeTestList, sectorPerms.allowedTestTypes]
+  );
+
+  const isPreFabricado = useMemo(() => {
+    const selectedSectorName = sectorList.find(s => String(s.id) === String(productSetor))?.nome;
+    return (selectedSectorName?.toLowerCase() === "pré-fabricado") || (user?.setor_nome?.toLowerCase() === "pré-fabricado");
+  }, [productSetor, sectorList, user?.setor_nome]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -65,17 +106,22 @@ export default function TestRegister() {
     loadData();
   }, []);
 
-  // Filtrar materiais por setor
+  // Filtrar materiais por setor selecionado + permissão de tipo
   useEffect(() => {
-    if (!productSetor) {
-      setFilteredMaterials(materialList);
-    } else {
-      const filtered = materialList.filter((m) => String(m.cod_setor) === String(productSetor) || m.setor === productSetor);
-      setFilteredMaterials(filtered);
+    let filtered = materialList;
+
+    // Filtro pelo setor selecionado no formulário
+    if (productSetor) {
+      filtered = filtered.filter((m) => String(m.cod_setor) === String(productSetor) || m.setor === productSetor);
     }
+
+    // Filtro pelo tipo permitido do setor do USUÁRIO (ex: Borracha = só BN)
+    filtered = filterMaterials(filtered, sectorPerms.allowedMaterialTypes);
+
+    setFilteredMaterials(filtered);
     setFkMaterial("");
     setProductType("");
-  }, [productSetor, materialList]);
+  }, [productSetor, materialList, sectorPerms.allowedMaterialTypes]);
 
   // AUTO-DETECÇÃO DE BN/DN AO SELECIONAR MATERIAL
   useEffect(() => {
@@ -148,10 +194,16 @@ export default function TestRegister() {
           tipo: productType,
           status: "Pendente",
           observacoes: observacoes,
+          ...(isPreFabricado ? {
+            metadata: {
+              ...metadata,
+              requisitante: metadata.requisitante || user?.setor_nome
+            }
+          } : {})
         },
         testes: testes.map((t) => ({
           fk_tipo_cod_tipo: t.fk_tipo_cod_tipo,
-          resultado: parseFloat(t.resultado),
+          resultado: t.resultado ? parseFloat(t.resultado) : null,
           fk_local_cod_local: t.fk_local_cod_local || null,
           data_fim: t.data_fim || null,
         })),
@@ -215,40 +267,26 @@ export default function TestRegister() {
           <div className="form-container">
             <form onSubmit={handleSubmit}>
               <div className="form-section-title" style={{ marginTop: 0 }}>
-                <h3>Informações do Material e Origem</h3>
+                <h3>Informações do Laudo</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Setor: <strong>{user?.setor_nome || 'N/A'}</strong> | Responsável: <strong>{user?.nome}</strong>
+                </p>
               </div>
 
               <div className="form-row">
-                <div className="form-group">
-                  <label>Setor *</label>
-                  <select value={productSetor} onChange={(e) => setProductSetor(e.target.value)} required>
-                    <option value="">Selecione o Setor</option>
-                    {sectorList.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
+                <div className="form-group" style={{ flex: 2 }}>
                   <label>Material (Referência) *</label>
-                  <select value={fkMaterial} onChange={(e) => setFkMaterial(e.target.value)} required disabled={!productSetor}>
-                    <option value="">{productSetor ? "Selecione a Referência" : "Selecione o Setor Primeiro"}</option>
+                  <select value={fkMaterial} onChange={(e) => setFkMaterial(e.target.value)} required>
+                    <option value="">Selecione a Referência</option>
                     {filteredMaterials.map((m) => (
                       <option key={m.referencia} value={m.referencia}>{m.referencia} ({m.tipo})</option>
                     ))}
                   </select>
                 </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
+                <div className="form-group" style={{ flex: 1 }}>
                   <label>Tipo (Detectado)</label>
                   <input type="text" value={productType} readOnly placeholder="BN / DN / Base"
                     style={{ background: "rgba(255,255,255,0.05)", fontWeight: "bold", color: "var(--accent-primary)" }} />
-                </div>
-                <div className="form-group">
-                  <label>Responsável *</label>
-                  <select value={fkFuncionario} onChange={(e) => setFkFuncionario(e.target.value)} required>
-                    <option value="">Selecione o Funcionário</option>
-                    {employeeList.map((f) => <option key={f.matricula} value={f.matricula}>{f.nome} {f.sobrenome}</option>)}
-                  </select>
                 </div>
               </div>
 
@@ -286,6 +324,76 @@ export default function TestRegister() {
                 )}
               </div>
 
+              {isPreFabricado && (
+                <div className="metadata-section" style={{
+                  marginTop: '24px',
+                  padding: '20px',
+                  background: 'rgba(var(--accent-primary-rgb), 0.03)',
+                  border: '1.5px dashed var(--accent-primary)',
+                  borderRadius: '12px'
+                }}>
+                  <div className="form-section-title" style={{ marginTop: 0, marginBottom: '16px' }}>
+                    <h3 style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
+                      <span className="material-symbols-outlined" style={{ marginRight: '8px' }}>analytics</span>
+                      Informações de Produção (Descolagem)
+                    </h3>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Requisitante *</label>
+                      <input type="text" value={metadata.requisitante} onChange={(e) => setMetadata({ ...metadata, requisitante: e.target.value })} placeholder="Ex: Engenharia" required={isPreFabricado} />
+                    </div>
+                    <div className="form-group">
+                      <label>Esteira / Linha *</label>
+                      <input type="text" value={metadata.esteira} onChange={(e) => setMetadata({ ...metadata, esteira: e.target.value })} placeholder="Ex: Linha 04" required={isPreFabricado} />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Líder *</label>
+                      <input type="text" value={metadata.lider} onChange={(e) => setMetadata({ ...metadata, lider: e.target.value })} placeholder="Nome do Líder" required={isPreFabricado} />
+                    </div>
+                    <div className="form-group">
+                      <label>Coordenador</label>
+                      <input type="text" value={metadata.coordenador} onChange={(e) => setMetadata({ ...metadata, coordenador: e.target.value })} placeholder="Nome do Coordenador" />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Adesivo *</label>
+                      <input type="text" value={metadata.adesivo} onChange={(e) => setMetadata({ ...metadata, adesivo: e.target.value })} placeholder="Referência do Adesivo" required={isPreFabricado} />
+                    </div>
+                    <div className="form-group">
+                      <label>Fornecedor Adesivo</label>
+                      <input type="text" value={metadata.adesivo_fornecedor} onChange={(e) => setMetadata({ ...metadata, adesivo_fornecedor: e.target.value })} placeholder="Marca/Fornecedor" />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Data Colagem</label>
+                      <input type="date" value={metadata.data_colagem} onChange={(e) => setMetadata({ ...metadata, data_colagem: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label>Data Realização</label>
+                      <input type="date" value={metadata.data_realizacao} onChange={(e) => setMetadata({ ...metadata, data_realizacao: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label>Lado</label>
+                      <select value={metadata.lado} onChange={(e) => setMetadata({ ...metadata, lado: e.target.value })}>
+                        <option value="Único">Único</option>
+                        <option value="Esquerdo">Esquerdo</option>
+                        <option value="Direito">Direito</option>
+                        <option value="Par">Par</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="form-group" style={{ marginTop: '20px' }}>
                 <label>Observações do Laudo (Opcional)</label>
                 <textarea
@@ -312,13 +420,24 @@ export default function TestRegister() {
                       <label>Tipo de Teste *</label>
                       <select value={teste.fk_tipo_cod_tipo} onChange={(e) => updateTest(index, "fk_tipo_cod_tipo", e.target.value)} required>
                         <option value="">Selecione</option>
-                        {typeTestList.map((t) => <option key={t.cod_tipo} value={t.cod_tipo}>{t.nome}</option>)}
+                        {allowedTestTypes.map((t) => <option key={t.cod_tipo} value={t.cod_tipo}>{t.nome}</option>)}
                       </select>
                     </div>
-                    <div className="form-group">
-                      <label>Resultado *</label>
-                      <input type="number" step="any" value={teste.resultado} onChange={(e) => updateTest(index, "resultado", e.target.value)} required />
-                    </div>
+
+                    {sectorPerms.canEditTestResults && (
+                      <div className="form-group">
+                        <label>Resultado *</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={teste.resultado}
+                          onChange={(e) => updateTest(index, "resultado", e.target.value)}
+                          required={sectorPerms.canEditTestResults}
+                          placeholder="Valor do ensaio"
+                        />
+                      </div>
+                    )}
+
                     <div className="form-group">
                       <label>Data Fim (opcional)</label>
                       <input type="date" value={teste.data_fim} onChange={(e) => updateTest(index, "data_fim", e.target.value)} />
@@ -344,7 +463,9 @@ export default function TestRegister() {
 
               <div className="form-actions" style={{ marginTop: 32 }}>
                 <Link to="/test" className="btn btn-secondary">Cancelar</Link>
-                <button type="submit" className="btn btn-primary">Cadastrar {testes.length} Testes</button>
+                <button type="submit" className="btn btn-primary">
+                  {sectorPerms.canEditTestResults ? 'Gerar Laudo Técnico' : 'Solicitar Laudo / Testes'} ({testes.length})
+                </button>
               </div>
             </form>
           </div>

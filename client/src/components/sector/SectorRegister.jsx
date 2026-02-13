@@ -4,8 +4,20 @@ import { sectorApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
 
+const profiles = [
+  { value: "padrao", label: "Acesso Padrão (Leitura)" },
+  { value: "laboratório", label: "Laboratório (Total)" },
+  { value: "borracha", label: "Borracha (Apenas BN)" },
+  { value: "injetado", label: "Injetado (Apenas DN)" },
+  { value: "protótipo", label: "Protótipo" },
+  { value: "pré-fabricado", label: "Pré-Fabricado / Descolagem" },
+  { value: "químico", label: "Químico" },
+  { value: "almoxarifado", label: "Almoxarifado" },
+];
+
 export default function SectorRegister() {
   const [name, setName] = useState("");
+  const [profile, setProfile] = useState("padrao");
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
   const navigate = useNavigate();
@@ -14,9 +26,10 @@ export default function SectorRegister() {
     e.preventDefault();
     setLoading(true);
     try {
-      await sectorApi.register({ nome: name });
+      await sectorApi.register({ nome: name, config_perfil: profile });
       setPopup({ show: true, msg: "Setor cadastrado com sucesso!" });
       setName("");
+      setProfile("padrao");
     } catch (err) {
       setPopup({ show: true, msg: err.message });
     } finally {
@@ -47,7 +60,20 @@ export default function SectorRegister() {
                   const value = e.target.value.replace(/\//g, "");
                   setName(value);
                 }}
+                placeholder="Ex: Engenharia Avançada"
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="profile">Perfil de Acesso *</label>
+              <select id="profile" value={profile} onChange={(e) => setProfile(e.target.value)} required>
+                {profiles.map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+              <small className="form-text text-muted" style={{ display: 'block', marginTop: '5px' }}>
+                Define quais ferramentas e materiais este setor poderá acessar.
+              </small>
             </div>
 
             <div className="form-actions">

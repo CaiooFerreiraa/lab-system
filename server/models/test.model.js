@@ -40,6 +40,26 @@ export default class TestModel extends BaseModel {
     `;
     const laudoId = laudo[0].id;
 
+    // 2.5 Se houver metadados de descolagem (Pré-Fabricado), salvar na tabela correspondente
+    if (shared.metadata) {
+      const m = shared.metadata;
+      await this.db`
+        INSERT INTO lab_system.descolagem (
+          fk_laudo_id, requisitante, lider, coordenador, gerente, 
+          esteira, adesivo, adesivo_fornecedor, lado, 
+          data_realizacao, data_colagem, fk_modelo_cod_modelo,
+          fk_funcionario_matricula, fk_cod_setor
+        ) VALUES (
+          ${laudoId}, ${m.requisitante || null}, ${m.lider || null}, 
+          ${m.coordenador || null}, ${m.gerente || null}, ${m.esteira || null}, 
+          ${m.adesivo || null}, ${m.adesivo_fornecedor || null}, ${m.lado || 'Único'},
+          ${m.data_realizacao || null}, ${m.data_colagem || null}, 
+          ${shared.fk_modelo_cod_modelo}, ${shared.fk_funcionario_matricula}, 
+          ${shared.fk_cod_setor}
+        )
+      `;
+    }
+
     // 2. Registrar testes vinculados ao laudo
     const results = [];
     for (const t of testes) {
@@ -81,10 +101,11 @@ export default class TestModel extends BaseModel {
 
   async getLaudo(id) {
     const laudos = await this.db`
-      SELECT l.*, m.nome as modelo_nome, f.nome as func_nome
+      SELECT l.*, m.nome as modelo_nome, f.nome as func_nome, s.nome as setor_nome
       FROM lab_system.laudo l
       JOIN lab_system.modelo m ON l.fk_modelo_cod_modelo = m.cod_modelo
       JOIN lab_system.funcionario f ON l.fk_funcionario_matricula = f.matricula
+      LEFT JOIN lab_system.setor s ON l.fk_cod_setor = s.id
       WHERE l.id = ${id}
     `;
     if (laudos.length === 0) return null;
@@ -124,17 +145,17 @@ export default class TestModel extends BaseModel {
   }
 
   async editLaudo(id, data) {
-    if (data.fk_cod_setor) {
+    if (data.fk_cod_setor !== undefined) {
       await this.db`
         UPDATE lab_system.laudo 
-        SET fk_cod_setor = ${data.fk_cod_setor}
+        SET fk_cod_setor = ${data.fk_cod_setor || null}
         WHERE id = ${id}
       `;
 
-      // Opcional: Atualizar o setor de todos os testes vinculados para manter consistência
+      // Atualizar o setor de todos os testes vinculados para manter consistência
       await this.db`
         UPDATE lab_system.teste
-        SET fk_cod_setor = ${data.fk_cod_setor}
+        SET fk_cod_setor = ${data.fk_cod_setor || null}
         WHERE fk_laudo_id = ${id}
       `;
     }
@@ -270,6 +291,22 @@ export default class TestModel extends BaseModel {
   async #getAnySpecForModel(codModelo) {
     const spec = await this.db`SELECT cod_especificacao FROM lab_system.especificacao WHERE cod_modelo = ${codModelo} LIMIT 1`;
     return spec[0]?.cod_especificacao || null;
+  }
+
+  async search(codTeste) {
+    const result = await this.db`
+      SELECT 
+        t.*,
+        tp.nome as tipo_nome,
+        m.nome as modelo_nome,
+        s.nome as setor_nome
+      FROM lab_system.teste t
+      JOIN lab_system.tipo tp ON t.fk_tipo_cod_tipo = tp.cod_tipo
+      JOIN lab_system.modelo m ON t.fk_modelo_cod_modelo = m.cod_modelo
+      LEFT JOIN lab_system.setor s ON t.fk_cod_setor = s.id
+      WHERE t.cod_teste = ${codTeste}
+    `;
+    return result[0];
   }
 
   async delete(cod_teste) {

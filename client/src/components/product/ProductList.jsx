@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { productApi } from "../../services/api";
 import PageHeader from "../common/PageHeader";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
+import { useAuth } from "../../contexts/AuthContext";
+import { getSectorPermissions, filterMaterials } from "../../config/permissions";
 
 export default function ProductList() {
   const [products, setProducts] = useState([]);
@@ -11,6 +13,12 @@ export default function ProductList() {
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
   const navigate = useNavigate();
+
+  const { user } = useAuth();
+  const sectorPerms = useMemo(
+    () => getSectorPermissions(user?.setor_nome, user?.role),
+    [user?.setor_nome, user?.role]
+  );
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -40,10 +48,21 @@ export default function ProductList() {
     }
   };
 
-  const filtered = products.filter((p) =>
-    p.referencia?.toLowerCase().includes(search.toLowerCase()) ||
-    p.setor?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    // 1. Filtrar pelo setor do usuário
+    let list = filterMaterials(products, sectorPerms.allowedMaterialTypes);
+
+    // 2. Filtrar pelo termo de busca
+    if (search) {
+      const term = search.toLowerCase();
+      list = list.filter((p) =>
+        p.referencia?.toLowerCase().includes(term) ||
+        p.setor?.toLowerCase().includes(term)
+      );
+    }
+
+    return list;
+  }, [products, search, sectorPerms.allowedMaterialTypes]);
 
   return (
     <>

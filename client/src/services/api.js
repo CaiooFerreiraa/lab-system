@@ -1,18 +1,43 @@
 const API_URL = import.meta.env.VITE_API_URL || "";
 
 /**
- * Wrapper para fetch com tratamento de erros padronizado.
+ * Retorna o token JWT do localStorage (se existir).
+ */
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
+ * Wrapper para fetch com tratamento de erros padronizado e autenticação JWT.
  */
 async function request(url, options = {}) {
   const config = {
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
+      ...options.headers,
     },
     ...options,
   };
+  // Garante que o header com merge sobrescreva corretamente
+  config.headers = { ...config.headers };
 
   const response = await fetch(`${API_URL}${url}`, config);
-  const data = await response.json();
+
+  let data = {};
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    data = await response.json();
+  }
+
+  // Se token expirou ou é inválido, desloga automaticamente
+  if (response.status === 401 && localStorage.getItem("token")) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
 
   if (!response.ok) {
     throw new Error(data.message || "Erro inesperado na requisição.");
@@ -20,6 +45,18 @@ async function request(url, options = {}) {
 
   return data;
 }
+
+// ============================
+// Auth API
+// ============================
+export const authApi = {
+  login: (data) => request("/auth/login", { method: "POST", body: JSON.stringify(data) }),
+  register: (data) => request("/auth/register", { method: "POST", body: JSON.stringify(data) }),
+  me: () => request("/auth/me"),
+  listUsers: () => request("/auth/users"),
+  removeUser: (id) => request(`/auth/users/${id}`, { method: "DELETE" }),
+  updateRole: (id, role) => request(`/auth/users/${id}/role`, { method: "PUT", body: JSON.stringify({ role }) }),
+};
 
 // ============================
 // Employee API
@@ -98,8 +135,6 @@ export const testApi = {
   report: () => request("/test/report"),
 };
 
-// ... (descolagem e msc)
-
 // ============================
 // Balança API
 // ============================
@@ -120,13 +155,16 @@ export const enumApi = {
 };
 
 // ============================
-// File Upload helper
+// File Upload helper (com autenticação)
 // ============================
 async function uploadFile(url, formData) {
   const response = await fetch(`${API_URL}${url}`, {
     method: "POST",
     body: formData,
-    // Sem Content-Type - browser seta automaticamente com boundary
+    headers: {
+      ...getAuthHeaders(),
+      // Sem Content-Type - browser seta automaticamente com boundary
+    },
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || "Erro no upload.");

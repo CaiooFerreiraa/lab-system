@@ -108,7 +108,6 @@ export default function TestReport() {
           { key: "charts", label: "Gráficos", icon: "bar_chart" },
           { key: "brand", label: "Por Marca", icon: "label" },
           { key: "overview", label: "Por Modelo", icon: "category" },
-          { key: "sector", label: "Por Setor", icon: "factory" },
           { key: "type", label: "Por Tipo de Teste", icon: "biotech" },
           { key: "recent", label: "Testes Recentes", icon: "history" },
         ].map((tab) => (
@@ -229,48 +228,6 @@ export default function TestReport() {
                   <Legend wrapperStyle={{ paddingTop: '20px' }} />
                   <Bar dataKey="aprovados" name="Aprovados" stackId="a" fill="hsl(145, 65%, 45%)" radius={[0, 0, 0, 0]} barSize={32} />
                   <Bar dataKey="reprovados" name="Reprovados" stackId="a" fill="hsl(0, 75%, 55%)" radius={[6, 6, 0, 0]} barSize={32} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Volume by Sector */}
-            <div className="chart-card" style={{
-              background: 'var(--bg-card)',
-              padding: '28px',
-              borderRadius: '20px',
-              border: '1px solid var(--border-color)',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-              position: 'relative'
-            }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-primary)' }}></div>
-              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.25rem' }}>
-                <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)', fontSize: '24px' }}>factory</span>
-                Volume por Setor (Top 5)
-              </h3>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={(bySector || []).slice(0, 5)} layout="vertical" margin={{ left: 20, right: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                  <XAxis type="number" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis
-                    dataKey="setor"
-                    type="category"
-                    stroke="var(--text-muted)"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    width={100}
-                    tick={{ fill: 'var(--text-primary)', fontWeight: '500' }}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                    contentStyle={{
-                      background: 'rgba(22, 25, 35, 0.9)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '12px'
-                    }}
-                  />
-                  <Bar dataKey="total" name="Total de Testes" fill="var(--accent-primary)" radius={[0, 6, 6, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -421,47 +378,6 @@ export default function TestReport() {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Por Setor */}
-      {activeTab === "sector" && (
-        <div className="report-section">
-          <h2>Desempenho por Setor</h2>
-          <div className="report-cards-grid">
-            {(bySector || []).map((row, i) => {
-              const rate = row.taxa_aprovacao;
-              return (
-                <div key={i} className="report-stat-card">
-                  <div className="report-stat-header">
-                    <h3>{row.setor}</h3>
-                    <span className={`tag ${statusTag(rate).className}`}>{rate ?? "—"}%</span>
-                  </div>
-                  <div className="report-stat-numbers">
-                    <div className="report-stat-item">
-                      <span className="report-stat-value">{row.total}</span>
-                      <span className="report-stat-label">Total</span>
-                    </div>
-                    <div className="report-stat-item report-stat-item--success">
-                      <span className="report-stat-value">{row.aprovados}</span>
-                      <span className="report-stat-label">Aprovados</span>
-                    </div>
-                    <div className="report-stat-item report-stat-item--danger">
-                      <span className="report-stat-value">{row.reprovados}</span>
-                      <span className="report-stat-label">Reprovados</span>
-                    </div>
-                  </div>
-                  <div className="approval-bar" style={{ marginTop: 12 }}>
-                    <div className="approval-bar-fill" style={{
-                      width: `${rate || 0}%`,
-                      background: rate >= 80 ? "var(--accent-success)" : rate >= 50 ? "hsl(45, 80%, 50%)" : "var(--accent-danger)"
-                    }}></div>
-                  </div>
-                </div>
-              );
-            })}
-            {bySector.length === 0 && <p className="text-muted">Nenhum dado disponível</p>}
           </div>
         </div>
       )}

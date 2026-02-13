@@ -10,18 +10,22 @@ export default class EmployeeModel extends BaseModel {
     await this.#insertPhoneNumber(employeeData);
   }
 
-  async #insertEmployee({ registration, shift, name, lastName }) {
+  async #insertEmployee({ registration, shift, name, lastName, sector }) {
     try {
       await this.db`
-        INSERT INTO lab_system.funcionario(matricula, turno, nome, sobrenome) 
-        VALUES (${registration}, ${shift}, ${name}, ${lastName})
+        INSERT INTO lab_system.funcionario(matricula, turno, nome, sobrenome, fk_cod_setor) 
+        VALUES (${registration}, ${shift}, ${name}, ${lastName}, ${sector || null})
       `;
     } catch (err) {
-      throw new Error("Matrícula já existente.");
+      if (err.message.includes("duplicate")) {
+        throw new Error("Matrícula já existente.");
+      }
+      throw err;
     }
   }
 
   async #insertPhoneNumber({ registration, phoneNumber }) {
+    if (!phoneNumber) return;
     await this.db`
       INSERT INTO lab_system.telefone(telefone, fk_funcionario_matricula) 
       VALUES (${phoneNumber}, ${registration})
@@ -30,18 +34,20 @@ export default class EmployeeModel extends BaseModel {
 
   async readAll() {
     const employees = await this.db`
-      SELECT nome, sobrenome, matricula, turno, telefone 
+      SELECT f.nome, f.sobrenome, f.matricula, f.turno, t.telefone, s.nome as setor, f.fk_cod_setor
       FROM lab_system.funcionario f 
-      JOIN lab_system.telefone t ON t.fk_funcionario_matricula = f.matricula
+      LEFT JOIN lab_system.telefone t ON t.fk_funcionario_matricula = f.matricula
+      LEFT JOIN lab_system.setor s ON f.fk_cod_setor = s.id
     `;
     return employees;
   }
 
   async search(registration) {
     const employees = await this.db`
-      SELECT nome, sobrenome, matricula, turno, telefone 
+      SELECT f.nome, f.sobrenome, f.matricula, f.turno, t.telefone, s.nome as setor, f.fk_cod_setor
       FROM lab_system.funcionario f 
-      JOIN lab_system.telefone t ON t.fk_funcionario_matricula = f.matricula
+      LEFT JOIN lab_system.telefone t ON t.fk_funcionario_matricula = f.matricula
+      LEFT JOIN lab_system.setor s ON f.fk_cod_setor = s.id
       WHERE f.matricula = ${registration}
     `;
 
@@ -57,20 +63,27 @@ export default class EmployeeModel extends BaseModel {
     await this.#updatePhoneNumber(employeeData);
   }
 
-  async #updateEmployee({ registration, shift, name, lastName }) {
+  async #updateEmployee({ registration, shift, name, lastName, sector }) {
     await this.db`
       UPDATE lab_system.funcionario
-      SET turno = ${shift}, nome = ${name}, sobrenome = ${lastName}
+      SET turno = ${shift}, nome = ${name}, sobrenome = ${lastName}, fk_cod_setor = ${sector || null}
       WHERE matricula = ${registration}
     `;
   }
 
   async #updatePhoneNumber({ registration, phoneNumber }) {
-    await this.db`
-      UPDATE lab_system.telefone
-      SET telefone = ${phoneNumber}
-      WHERE fk_funcionario_matricula = ${registration}
-    `;
+    if (!phoneNumber) return;
+    const existing = await this.db`SELECT 1 FROM lab_system.telefone WHERE fk_funcionario_matricula = ${registration}`;
+
+    if (existing.length > 0) {
+      await this.db`
+        UPDATE lab_system.telefone
+        SET telefone = ${phoneNumber}
+        WHERE fk_funcionario_matricula = ${registration}
+      `;
+    } else {
+      await this.#insertPhoneNumber({ registration, phoneNumber });
+    }
   }
 
   async delete(registration) {
@@ -89,6 +102,8 @@ export default class EmployeeModel extends BaseModel {
       matricula: e.matricula,
       turno: e.turno,
       telefone: e.telefone,
+      setor: e.setor,
+      fk_cod_setor: e.fk_cod_setor
     }));
   }
 }

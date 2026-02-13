@@ -10,9 +10,7 @@ export default function ModelRegister() {
   const [marca, setMarca] = useState("");
   const [fkMscId, setFkMscId] = useState("");
   const [mscList, setMscList] = useState([]);
-  const [especificacoes, setEspecificacoes] = useState([{ tipo: "", valor: "", variacao: "" }]);
   const [marks, setMarks] = useState([]);
-  const [testTypes, setTestTypes] = useState([]);
   const [shoeTypes, setShoeTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
@@ -21,15 +19,13 @@ export default function ModelRegister() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [marksRes, typesRes, shoeRes, mscRes] = await Promise.all([
+        const [marksRes, shoeRes, mscRes] = await Promise.all([
           markApi.list(),
-          markApi.listTypes(),
           markApi.listTypeShoes(),
           mscApi.list()
         ]);
         const marksData = marksRes.data || marksRes;
         if (Array.isArray(marksData)) setMarks(marksData.map((m) => m.marca));
-        setTestTypes(typesRes.data || typesRes.types || []);
         setShoeTypes(shoeRes.data || shoeRes.types || []);
         setMscList(mscRes.data || []);
       } catch (err) {
@@ -39,14 +35,6 @@ export default function ModelRegister() {
     load();
   }, []);
 
-  const addSpec = () => setEspecificacoes([...especificacoes, { tipo: "", valor: "", variacao: "" }]);
-  const removeSpec = (i) => setEspecificacoes(especificacoes.filter((_, idx) => idx !== i));
-  const updateSpec = (i, field, value) => {
-    const clone = [...especificacoes];
-    clone[i][field] = value;
-    setEspecificacoes(clone);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -55,12 +43,10 @@ export default function ModelRegister() {
         nome,
         tipo,
         marca,
-        fk_msc_id: fkMscId || null,
-        especificacoes: (fkMscId) ? [] : especificacoes
+        fk_msc_id: fkMscId
       });
       setPopup({ show: true, msg: "Modelo cadastrado com sucesso!" });
       setNome(""); setTipo(""); setMarca(""); setFkMscId("");
-      setEspecificacoes([{ tipo: "", valor: "", variacao: "" }]);
     } catch (err) {
       setPopup({ show: true, msg: err.message });
     } finally {
@@ -101,7 +87,7 @@ export default function ModelRegister() {
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="tipo">Tipo de Calçado*</label>
+                <label htmlFor="tipo">Tipo de Calçado *</label>
                 <select id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)} required>
                   <option value="">Selecione o Tipo</option>
                   {shoeTypes.map((t, i) => <option key={i} value={t}>{t}</option>)}
@@ -109,44 +95,16 @@ export default function ModelRegister() {
               </div>
 
               <div className="form-group">
-                <label>Ficha Técnica (MSC)</label>
+                <label>Ficha Técnica (MSC) *</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <select value={fkMscId} onChange={(e) => setFkMscId(e.target.value)} style={{ flex: 1 }}>
-                    <option value="">Nenhuma (Usar manual)</option>
-                    {mscList.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                  <select value={fkMscId} onChange={(e) => setFkMscId(e.target.value)} required style={{ flex: 1 }}>
+                    <option value="">Selecione a MSC</option>
+                    {mscList.map(m => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
                   </select>
                   <Link to="/msc/register" className="btn btn-sm btn-outline" title="Nova MSC">+</Link>
                 </div>
               </div>
             </div>
-
-            {!fkMscId && (
-              <>
-                <div className="form-section-title">
-                  <h3>Especificações Manuais</h3>
-                  <button type="button" className="btn btn-sm btn-outline" onClick={addSpec}>
-                    <span className="material-symbols-outlined">add</span>
-                    Adicionar
-                  </button>
-                </div>
-
-                {especificacoes.map((esp, index) => (
-                  <div key={index} className="dynamic-field-group dynamic-field-group--row">
-                    <select value={esp.tipo} onChange={(e) => updateSpec(index, "tipo", e.target.value)} required>
-                      <option value="">Tipo de Teste</option>
-                      {testTypes.map((t, i) => <option key={i} value={t}>{t}</option>)}
-                    </select>
-                    <input type="number" placeholder="Valor" value={esp.valor}
-                      onChange={(e) => updateSpec(index, "valor", e.target.value)} required />
-                    <input type="number" placeholder="Variação" value={esp.variacao}
-                      onChange={(e) => updateSpec(index, "variacao", e.target.value)} required />
-                    <button type="button" className="icon-btn icon-btn--danger" onClick={() => removeSpec(index)}>
-                      <span className="material-symbols-outlined">delete</span>
-                    </button>
-                  </div>
-                ))}
-              </>
-            )}
 
             <div className="form-actions" style={{ marginTop: 32 }}>
               <Link to="/model" className="btn btn-secondary">

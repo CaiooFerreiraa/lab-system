@@ -30,20 +30,20 @@ export default class MSCModel extends BaseModel {
   }
 
   async edit({ id, nome, descricao, tipo, especificacoes }) {
-    return await this.db.begin(async sql => {
-      // 1. Atualizar cabeçalho
-      await sql`
-        UPDATE lab_system.msc
-        SET nome = ${nome}, descricao = ${descricao}, tipo = ${tipo}
-        WHERE id = ${id}
-      `;
+    // 1. Atualizar cabeçalho
+    await this.db`
+      UPDATE lab_system.msc
+      SET nome = ${nome}, descricao = ${descricao}, tipo = ${tipo}
+      WHERE id = ${id}
+    `;
 
-      // 2. Remover especificações antigas
-      await sql`DELETE FROM lab_system.msc_especificacao WHERE fk_msc_id = ${id}`;
+    // 2. Remover especificações antigas
+    await this.db`DELETE FROM lab_system.msc_especificacao WHERE fk_msc_id = ${id}`;
 
-      // 3. Inserir novas especificações
+    // 3. Inserir novas especificações
+    if (especificacoes && especificacoes.length > 0) {
       for (const esp of especificacoes) {
-        await sql`
+        await this.db`
           INSERT INTO lab_system.msc_especificacao (
             fk_msc_id, tipo_teste, regra_tipo, v_alvo, v_variacao, v_min, v_max
           ) VALUES (
@@ -53,7 +53,7 @@ export default class MSCModel extends BaseModel {
           );
         `;
       }
-    });
+    }
   }
 
   async readAll() {

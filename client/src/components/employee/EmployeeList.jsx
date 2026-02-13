@@ -68,6 +68,7 @@ export default function EmployeeList() {
               <span className="data-card-subtitle">{emp.matricula}</span>
               <div className="data-card-tags">
                 <span className="tag">{emp.turno}</span>
+                <span className="tag tag--info">{emp.setor || "Sem setor"}</span>
                 <span className="tag tag--muted">{emp.telefone}</span>
               </div>
             </div>

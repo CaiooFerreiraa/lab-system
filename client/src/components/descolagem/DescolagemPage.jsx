@@ -330,12 +330,18 @@ export default function DescolagemPage() {
 
             <div className="modal-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
               {/* PDF Preview */}
-              <div className="pdf-viewer-container" style={{ flex: 2, background: '#1a1d27', borderRight: '1px solid var(--border-color)' }}>
+              <div className="pdf-viewer-container" style={{ flex: 2, background: '#1a1d27', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '10px', textAlign: 'right', borderBottom: '1px solid #333', background: '#252836' }}>
+                  <a href={`${API_URL}${viewRecord.arquivo_path}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '6px' }}>open_in_new</span>
+                    Abrir PDF em nova aba
+                  </a>
+                </div>
                 <iframe
                   src={`${API_URL}${viewRecord.arquivo_path}#toolbar=1`}
                   width="100%"
                   height="100%"
-                  style={{ border: 'none' }}
+                  style={{ border: 'none', flex: 1 }}
                   title="PDF Preview"
                 />
               </div>
