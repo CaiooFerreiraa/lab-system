@@ -102,7 +102,7 @@ export const sectorApi = {
   search: (nome) => request(`/sector/search?nome=${nome}`),
   listMateriais: (uuid) => request(`/sector/list?uuid=${uuid}`),
   register: (data) => request("/sector/register", { method: "POST", body: JSON.stringify(data) }),
-  update: (oldName, newName) => request(`/sector/edit?oldName=${oldName}&newName=${newName}`, { method: "PUT" }),
+  update: (oldName, data) => request(`/sector/edit?oldName=${oldName}`, { method: "PUT", body: JSON.stringify(data) }),
   remove: (nome) => request(`/sector/delete?nome=${nome}`, { method: "DELETE" }),
 };
 
@@ -126,12 +126,14 @@ export const testApi = {
   listLaudos: () => request("/test/read-laudos"),
   getLaudo: (id) => request(`/test/laudo/${id}`),
   updateLaudo: (id, data) => request(`/test/laudo/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  removeLaudo: (id) => request(`/test/laudo/${id}`, { method: "DELETE" }),
   addTestToLaudo: (laudoId, data) => request(`/test/laudo/${laudoId}/add-test`, { method: "POST", body: JSON.stringify(data) }),
   search: (cod_teste) => request(`/test/search?cod_teste=${cod_teste}`),
   register: (data) => request("/test/register", { method: "POST", body: JSON.stringify(data) }),
   registerBatch: (data) => request("/test/register", { method: "POST", body: JSON.stringify(data) }),
   update: (data) => request("/test/edit", { method: "PUT", body: JSON.stringify(data) }),
   remove: (cod_teste) => request(`/test/delete?cod_teste=${cod_teste}`, { method: "DELETE" }),
+  receiveLaudo: (id) => request(`/test/laudo/${id}/receive`, { method: "POST" }),
   report: () => request("/test/report"),
 };
 
@@ -180,6 +182,16 @@ export const descolagemApi = {
   upload: (formData) => uploadFile("/descolagem/upload", formData),
   report: () => request("/descolagem/report"),
   remove: (id) => request(`/descolagem/delete?id=${id}`, { method: "DELETE" }),
+};
+
+// ============================
+// Production API
+// ============================
+export const productionApi = {
+  listOptions: () => request("/production/options"),
+  getByCategory: (cat) => request(`/production/options/${cat}`),
+  registerOption: (data) => request("/production/options", { method: "POST", body: JSON.stringify(data) }),
+  removeOption: (id) => request(`/production/options/${id}`, { method: "DELETE" }),
 };
 
 // ============================

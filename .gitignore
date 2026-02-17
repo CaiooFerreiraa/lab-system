@@ -5,6 +5,9 @@ node_modules/
 .env
 .env.local
 .env.production
+.agent/
+.migrations/
+.scripts/
 
 # Build output
 client/dist/

@@ -7,6 +7,25 @@ export default class TestController {
 
   register = asyncHandler(async (req, res) => {
     const body = req.body;
+
+    // Fallback de Setor para Laudo
+    if (body.shared && !body.shared.fk_cod_setor && req.user?.fk_cod_setor) {
+      body.shared.fk_cod_setor = req.user.fk_cod_setor;
+    }
+    // Fallback de Matrícula para Laudo
+    if (body.shared && !body.shared.fk_funcionario_matricula && req.user?.fk_funcionario_matricula) {
+      body.shared.fk_funcionario_matricula = req.user.fk_funcionario_matricula;
+    }
+
+    // Fallback de Setor para Teste Individual
+    if (!body.testes && !body.fk_cod_setor && req.user?.fk_cod_setor) {
+      body.fk_cod_setor = req.user.fk_cod_setor;
+    }
+    // Fallback de Matrícula para Teste Individual
+    if (!body.testes && !body.fk_funcionario_matricula && req.user?.fk_funcionario_matricula) {
+      body.fk_funcionario_matricula = req.user.fk_funcionario_matricula;
+    }
+
     // Se vier com array de testes, registra como laudo
     if (body.testes && Array.isArray(body.testes)) {
       const result = await this.repository.registerLaudo(body);
@@ -64,5 +83,18 @@ export default class TestController {
     const { id } = req.params;
     await this.repository.editLaudo(id, req.body);
     res.json({ success: true, message: "Laudo atualizado com sucesso." });
+  });
+  deleteLaudo = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const success = await this.repository.deleteLaudo(id);
+    if (!success) return res.status(404).json({ success: false, message: "Laudo não encontrado." });
+    res.json({ success: true, message: "Laudo excluído com sucesso." });
+  });
+
+  receiveLaudo = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const matricula = req.user?.fk_funcionario_matricula;
+    const result = await this.repository.markLaudoAsReceived(id, matricula);
+    res.json({ success: true, message: "Laudo marcado como recebido. Prazo iniciado.", data: result });
   });
 }

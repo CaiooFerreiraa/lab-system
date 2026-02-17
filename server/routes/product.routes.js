@@ -4,9 +4,13 @@ import ProductModel from "../models/product.model.js";
 import { validateProduct } from "../middlewares/validators/product.validator.js";
 import db from "../config/database.js";
 
+import { protect } from "../middlewares/auth.middleware.js";
+
 const router = Router();
 const repository = new ProductModel(db);
 const controller = new ProductController(repository);
+
+router.use(protect);
 
 router.post("/register", validateProduct, controller.register);
 router.get("/search", controller.search);

@@ -28,8 +28,14 @@ export default class DescolagemController {
     }
 
     // Tenta encontrar ou criar Marca, Modelo e Setor no banco
-    let fk_modelo = (req.body.fk_modelo_cod_modelo && req.body.fk_modelo_cod_modelo !== "null") ? parseInt(req.body.fk_modelo_cod_modelo) : null;
-    let fk_setor = (req.body.fk_cod_setor && req.body.fk_cod_setor !== "null") ? parseInt(req.body.fk_cod_setor) : null;
+    const toInt = (val) => {
+      if (!val || val === "null" || val === "") return null;
+      const p = parseInt(val);
+      return isNaN(p) ? null : p;
+    };
+
+    let fk_modelo = toInt(req.body.fk_modelo_cod_modelo);
+    let fk_setor = toInt(req.body.fk_cod_setor);
 
     if (!fk_modelo && extractedData.modelo) {
       try {
@@ -93,6 +99,11 @@ export default class DescolagemController {
       } catch (e) { console.error("Erro ao cruzar/criar setor:", e); }
     }
 
+    // Final Fallback: Se ainda não tem setor, usa o do usuário logado
+    if (!fk_setor && req.user?.fk_cod_setor) {
+      fk_setor = req.user.fk_cod_setor;
+    }
+
     const data = {
       titulo: req.body.titulo || req.file.originalname,
       arquivo_nome: req.file.originalname,
@@ -125,6 +136,51 @@ export default class DescolagemController {
       valor_maximo: (req.body.valor_maximo && req.body.valor_maximo !== "null") ? parseFloat(req.body.valor_maximo) : extractedData.vMax,
       status_final: req.body.status_final || extractedData.statusFinal || 'Pendente'
     };
+
+    // Se fk_laudo_id estiver presente, tentamos atualizar o laudo existente
+    if (req.body.fk_laudo_id) {
+      const laudoId = parseInt(req.body.fk_laudo_id);
+      const lado = data.lado;
+
+      const row = await this.repository.updateByLaudoId(laudoId, lado, data);
+
+      // Atualiza também a tabela de testes vinculada a este laudo
+      try {
+        // Busca testes do laudo que sejam do tipo DESCOLAGEM
+        const tests = await this.repository.db`
+          SELECT t.cod_teste, tp.nome 
+          FROM lab_system.teste t
+          JOIN lab_system.tipo tp ON t.fk_tipo_cod_tipo = tp.cod_tipo
+          WHERE t.fk_laudo_id = ${laudoId} AND tp.nome ILIKE '%DESCOLAGEM%'
+        `;
+
+        if (tests.length > 0) {
+          // Se houver mais de um teste (ex: Esquerdo e Direito), tenta filtrar pelo lado
+          let targetTest = tests[0];
+          if (tests.length > 1 && lado !== 'Único') {
+            const matched = tests.find(t => t.nome.toLowerCase().includes(lado.toLowerCase()));
+            if (matched) targetTest = matched;
+          }
+
+          // Atualiza o resultado do teste
+          await this.repository.db`
+            UPDATE lab_system.teste 
+            SET resultado = ${data.valor_media}, status = ${data.status_final}
+            WHERE cod_teste = ${targetTest.cod_teste}
+          `;
+          console.log(`[Link] Teste ${targetTest.cod_teste} atualizado com resultado do PDF.`);
+        }
+      } catch (e) {
+        console.error("Erro ao atualizar teste vinculado:", e);
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: row,
+        message: "PDF vinculado ao laudo com sucesso.",
+        autoExtracted: !!(extractedData.vMedia || extractedData.vMin || extractedData.vMax)
+      });
+    }
 
     const row = await this.repository.register(data);
     res.status(201).json({

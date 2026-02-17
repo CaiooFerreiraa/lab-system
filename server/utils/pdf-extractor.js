@@ -148,8 +148,8 @@ export function parseTechnicalData(text) {
       data.adesivo = sMatch[1].trim();
       data.adesivo_fornecedor = sMatch[2].trim();
     } else {
-      // Tenta dividir por hífen
-      const hiphenParts = mainInfo.split(/\s+-\s+/);
+      // Tenta dividir por hífen (mais flexível: com ou sem espaços)
+      const hiphenParts = mainInfo.split(/\s*-\s*/);
       if (hiphenParts.length >= 2) {
         data.adesivo = hiphenParts[0].trim();
         data.adesivo_fornecedor = hiphenParts[1].trim();

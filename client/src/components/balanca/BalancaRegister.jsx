@@ -14,6 +14,7 @@ export default function BalancaRegister() {
   const [fkSetor, setFkSetor] = useState("");
   const [status, setStatus] = useState("Aprovado");
   const [diferenca, setDiferenca] = useState("");
+  const [observacoes, setObservacoes] = useState("");
 
   const [sectorList, setSectorList] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ export default function BalancaRegister() {
           setFkSetor(d.fk_cod_setor);
           setStatus(d.status);
           setDiferenca(d.diferenca_reprovacao || "");
+          setObservacoes(d.observacoes || "");
         }
       }).catch(() => setPopup({ show: true, msg: "Erro ao carregar dados." }))
         .finally(() => setLoading(false));
@@ -47,7 +49,8 @@ export default function BalancaRegister() {
         calibracao_externa: calibracaoExterna,
         fk_cod_setor: fkSetor,
         status,
-        diferenca_reprovacao: status === "Reprovado" ? parseFloat(diferenca) : null
+        diferenca_reprovacao: status === "Reprovado" ? parseFloat(diferenca) : null,
+        observacoes
       };
 
       if (isEditing) {
@@ -116,6 +119,16 @@ export default function BalancaRegister() {
                   <input type="number" step="any" value={diferenca} onChange={(e) => setDiferenca(e.target.value)} required placeholder="Ex: 0.05" />
                 </div>
               )}
+            </div>
+
+            <div className="form-group">
+              <label>Observações</label>
+              <textarea
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                placeholder="Detalhes adicionais sobre a balança ou calibração..."
+                rows={3}
+              />
             </div>
 
             <div className="form-actions">

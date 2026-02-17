@@ -15,6 +15,19 @@ export default function TestEdit() {
   const [resultado, setResultado] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [status, setStatus] = useState("");
+  const [valores, setValores] = useState([]);
+
+  const MULTI_VALUE_TESTS = {
+    'ALONGAMENTO': 3,
+    'TRACAO': 3,
+    'RASGAMENTO': 3,
+    'DENSIDADE': 3,
+    'MODULO 300%': 3,
+    'COMPRESSION SET': 5,
+    'ENCOLHIMENTO': 6
+  };
+
+  const PERCENT_TESTS = ['ALONGAMENTO', 'COMPRESSION SET'];
 
   const [typeTestList, setTypeTestList] = useState([]);
   const [modelSpecs, setModelSpecs] = useState([]);
@@ -55,7 +68,7 @@ export default function TestEdit() {
     try {
       await testApi.update({
         cod_teste: id,
-        resultado: parseFloat(resultado),
+        resultado: (resultado && !isNaN(parseFloat(resultado))) ? parseFloat(resultado) : null,
         data_fim: dataFim,
         status: status // O backend reavalia se resultado mudar
       });
@@ -90,9 +103,122 @@ export default function TestEdit() {
               <input type="text" value={typeTestList.find(t => t.cod_tipo === data?.fk_tipo_cod_tipo)?.nome || ""} readOnly disabled />
             </div>
 
-            <div className="form-group">
-              <label>Resultado *</label>
-              <input type="number" step="any" value={resultado} onChange={(e) => setResultado(e.target.value)} required />
+            <div className="form-group" style={{
+              flex: MULTI_VALUE_TESTS[typeTestList.find(t => t.cod_tipo === data?.fk_tipo_cod_tipo)?.nome?.toUpperCase()] ? '2' : '1'
+            }}>
+              <label>Resultado {typeTestList.find(t => t.cod_tipo === data?.fk_tipo_cod_tipo)?.nome?.toUpperCase() === 'DESCOLAGEM' ? '' : '*'} {MULTI_VALUE_TESTS[typeTestList.find(t => t.cod_tipo === data?.fk_tipo_cod_tipo)?.nome?.toUpperCase()] && "(Média Automática)"}</label>
+
+              {(() => {
+                const typeName = typeTestList.find(t => t.cod_tipo === data?.fk_tipo_cod_tipo)?.nome?.toUpperCase();
+                const numFields = MULTI_VALUE_TESTS[typeName];
+                const isPercent = PERCENT_TESTS.includes(typeName);
+
+                if (numFields) {
+                  return (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {[...Array(numFields)].map((_, i) => (
+                        <input
+                          key={i}
+                          type="number"
+                          step="any"
+                          placeholder={`V${i + 1}`}
+                          style={{
+                            width: '100px',
+                            padding: '12px',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '12px',
+                            fontSize: '1rem',
+                            color: 'var(--text-primary)',
+                            textAlign: 'center',
+                            transition: 'all 0.2s ease',
+                            outline: 'none',
+                            boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.3)'
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                          onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                          value={valores[i] || ""}
+                          onChange={(e) => {
+                            const newVals = [...(valores || [])];
+                            newVals[i] = e.target.value;
+                            setValores(newVals);
+                            const validVals = newVals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+                            if (validVals.length > 0) {
+                              const avg = (validVals.reduce((a, b) => a + b, 0) / validVals.length).toFixed(2);
+                              setResultado(avg);
+                            }
+                          }}
+                        />
+                      ))}
+                      {isPercent && (
+                        <span style={{
+                          color: 'var(--accent-primary)',
+                          fontWeight: 'bold',
+                          fontSize: '1rem',
+                          background: 'rgba(60,120,255,0.1)',
+                          padding: '10px 16px',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(60,120,255,0.2)'
+                        }}>%</span>
+                      )}
+                      <div style={{
+                        padding: '12px 24px',
+                        background: 'rgba(60,120,255,0.1)',
+                        borderRadius: '12px',
+                        fontWeight: '800',
+                        border: '1px solid var(--accent-primary)',
+                        color: 'var(--accent-primary)',
+                        boxShadow: '0 4px 15px rgba(60,120,255,0.2)',
+                        minWidth: '100px',
+                        textAlign: 'center',
+                        fontSize: '1.2rem'
+                      }}>
+                        {resultado || "---"}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type={typeTestList.find(t => t.cod_tipo === data?.fk_tipo_cod_tipo)?.nome?.toUpperCase() === 'DESCOLAGEM' ? "text" : "number"}
+                      step="any"
+                      value={resultado}
+                      onChange={(e) => setResultado(e.target.value)}
+                      required={typeTestList.find(t => t.cod_tipo === data?.fk_tipo_cod_tipo)?.nome?.toUpperCase() !== 'DESCOLAGEM'}
+                      placeholder={typeTestList.find(t => t.cod_tipo === data?.fk_tipo_cod_tipo)?.nome?.toUpperCase() === 'DESCOLAGEM' ? "Opcional..." : "Valor..."}
+                      style={{
+                        width: '140px',
+                        padding: '12px 16px',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '12px',
+                        color: 'var(--text-primary)',
+                        fontWeight: '700',
+                        fontSize: '1.1rem',
+                        outline: 'none',
+                        transition: 'all 0.2s ease',
+                        boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.3)'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                      onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                    />
+                    {isPercent && (
+                      <span style={{
+                        color: 'var(--accent-primary)',
+                        fontWeight: 'bold',
+                        fontSize: '1.1rem',
+                        background: 'rgba(60,120,255,0.1)',
+                        padding: '12px 18px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(60,120,255,0.2)'
+                      }}>%</span>
+                    )}
+                  </div>
+                );
+              })()}
+
               {data && (
                 <div style={{ fontSize: '0.8rem', marginTop: '6px', color: 'var(--accent-primary)' }}>
                   {(() => {

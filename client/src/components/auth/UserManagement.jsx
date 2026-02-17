@@ -247,7 +247,14 @@ export default function UserManagement() {
                       {(u.nome || u.email).charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div className="user-mgmt-name">{u.nome ? `${u.nome} ${u.sobrenome || ""}` : u.email}</div>
+                      <div className="user-mgmt-name">
+                        {u.nome ? (
+                          <>
+                            {u.fk_funcionario_matricula && <span style={{ color: "var(--accent-primary)", fontWeight: "bold", marginRight: "6px" }}>[{u.fk_funcionario_matricula}]</span>}
+                            {u.nome} {u.sobrenome || ""}
+                          </>
+                        ) : u.email}
+                      </div>
                       <div className="user-mgmt-email">{u.email}</div>
                     </div>
                   </div>

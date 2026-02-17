@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { modelApi, markApi } from "../../services/api";
+import { modelApi, markApi, mscApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
 
@@ -10,6 +10,9 @@ export default function ModelEdit() {
   const [tipo, setTipo] = useState("");
   const [marca, setMarca] = useState("");
   const [codModelo, setCodModelo] = useState(0);
+  const [fkMscIdBn, setFkMscIdBn] = useState("");
+  const [fkMscIdDn, setFkMscIdDn] = useState("");
+  const [mscList, setMscList] = useState([]);
   const [especificacoes, setEspecificacoes] = useState([]);
   const [marks, setMarks] = useState([]);
   const [testTypes, setTestTypes] = useState([]);
@@ -21,11 +24,12 @@ export default function ModelEdit() {
     const load = async () => {
       setLoading(true);
       try {
-        const [modelRes, marksRes, typesRes, shoeRes] = await Promise.all([
+        const [modelRes, marksRes, typesRes, shoeRes, mscRes] = await Promise.all([
           modelApi.search(uuid),
           markApi.list(),
           markApi.listTypes(),
           markApi.listTypeShoes(),
+          mscApi.list()
         ]);
 
         const modelo = modelRes.data || modelRes.modelo;
@@ -34,6 +38,8 @@ export default function ModelEdit() {
           setTipo(modelo.tipo);
           setMarca(modelo.marca);
           setCodModelo(modelo.cod_modelo);
+          setFkMscIdBn(modelo.fk_msc_id_bn || "");
+          setFkMscIdDn(modelo.fk_msc_id_dn || "");
           setEspecificacoes(modelo.especificacoes?.map((e) => ({
             tipo: e.tipo, valor: e.valor, variacao: e.variacao,
           })) || []);
@@ -43,6 +49,7 @@ export default function ModelEdit() {
         if (Array.isArray(marksData)) setMarks(marksData.map((m) => m.marca));
         setTestTypes(typesRes.data || typesRes.types || []);
         setShoeTypes(shoeRes.data || shoeRes.types || []);
+        setMscList(mscRes.data || []);
       } catch (err) {
         setPopup({ show: true, msg: err.message });
       } finally {
@@ -64,7 +71,15 @@ export default function ModelEdit() {
     e.preventDefault();
     setLoading(true);
     try {
-      await modelApi.update({ cod_modelo: codModelo, nome, tipo, marca, especificacoes });
+      await modelApi.update({
+        cod_modelo: codModelo,
+        nome,
+        tipo,
+        marca,
+        fk_msc_id_bn: fkMscIdBn,
+        fk_msc_id_dn: fkMscIdDn,
+        especificacoes
+      });
       setPopup({ show: true, msg: "Modelo atualizado com sucesso!" });
     } catch (err) {
       setPopup({ show: true, msg: err.message });
@@ -105,6 +120,24 @@ export default function ModelEdit() {
                 <option value="">Selecione</option>
                 {marks.map((m, i) => <option key={i} value={m}>{m}</option>)}
               </select>
+            </div>
+
+            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div className="form-group">
+                <label>Ficha Técnica BN</label>
+                <select value={fkMscIdBn} onChange={(e) => setFkMscIdBn(e.target.value)}>
+                  <option value="">Nenhuma</option>
+                  {mscList.map(m => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Ficha Técnica DN</label>
+                <select value={fkMscIdDn} onChange={(e) => setFkMscIdDn(e.target.value)}>
+                  <option value="">Nenhuma</option>
+                  {mscList.map(m => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
+                </select>
+              </div>
             </div>
 
             <div className="form-section-title">

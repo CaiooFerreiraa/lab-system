@@ -12,6 +12,7 @@ async function migrate() {
         fk_cod_setor INTEGER REFERENCES lab_system.setor(id),
         status VARCHAR(20) CHECK (status IN ('Aprovado', 'Reprovado')),
         diferenca_reprovacao NUMERIC,
+        observacoes TEXT,
         data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;

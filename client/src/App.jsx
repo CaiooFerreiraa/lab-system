@@ -43,6 +43,7 @@ import MSCRegister from "./components/msc/MSCRegister";
 import BalancaList from "./components/balanca/BalancaList";
 import BalancaRegister from "./components/balanca/BalancaRegister";
 import UserManagement from "./components/auth/UserManagement";
+import ProductionOptions from "./components/production/ProductionOptions";
 
 export default function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -126,8 +127,9 @@ export default function App() {
           <Route path="/balanca/register" element={<ProtectedRoute><BalancaRegister /></ProtectedRoute>} />
           <Route path="/balanca/edit/:id" element={<ProtectedRoute><BalancaRegister /></ProtectedRoute>} />
 
-          {/* Admin: Gerenciamento de Usuários */}
+          {/* Admin: Gerenciamento de Usuários e Produção */}
           <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+          <Route path="/production/settings" element={<ProtectedRoute><ProductionOptions /></ProtectedRoute>} />
 
           {/* Fallback login */}
           <Route path="/login" element={<LoginPage />} />

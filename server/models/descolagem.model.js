@@ -153,6 +153,68 @@ export default class DescolagemModel extends BaseModel {
     };
   }
 
+  async updateByLaudoId(laudoId, lado, data) {
+    const {
+      titulo, arquivo_nome, arquivo_path, valor_media, valor_minimo,
+      valor_maximo, status_final, especificacao_valor
+    } = data;
+
+    // Tenta atualizar o registro existente para aquele lado no laudo
+    const [row] = await this.db`
+      UPDATE lab_system.descolagem SET
+        titulo = COALESCE(${titulo}, titulo),
+        arquivo_nome = COALESCE(${arquivo_nome}, arquivo_nome),
+        arquivo_path = COALESCE(${arquivo_path}, arquivo_path),
+        valor_media = COALESCE(${valor_media}, valor_media),
+        valor_minimo = COALESCE(${valor_minimo}, valor_minimo),
+        valor_maximo = COALESCE(${valor_maximo}, valor_maximo),
+        status_final = COALESCE(${status_final}, status_final),
+        especificacao_valor = COALESCE(${especificacao_valor}, especificacao_valor),
+        data_upload = NOW()
+      WHERE fk_laudo_id = ${laudoId} AND lado = ${lado}
+      RETURNING *
+    `;
+
+    // Se não existir o registro para esse lado, cria um novo vinculado ao laudo
+    // Mas geralmente registerLaudo já cria um. Se for Nike e for o segundo pé, pode precisar criar.
+    if (!row) {
+      // Pega metadados do primeiro registro deste laudo para manter consistência
+      const [meta] = await this.db`SELECT * FROM lab_system.descolagem WHERE fk_laudo_id = ${laudoId} LIMIT 1`;
+
+      const [newRow] = await this.db`
+        INSERT INTO lab_system.descolagem (
+          fk_laudo_id, titulo, arquivo_nome, arquivo_path, valor_media, valor_minimo,
+          valor_maximo, status_final, lado, especificacao_valor,
+          fk_modelo_cod_modelo, fk_cod_setor, fk_funcionario_matricula,
+          marca, requisitante, lider, coordenador, gerente, esteira, 
+          adesivo, adesivo_fornecedor, data_realizacao, data_colagem, cores, numero_pedido
+        ) VALUES (
+          ${laudoId}, ${titulo}, ${arquivo_nome}, ${arquivo_path}, ${valor_media}, ${valor_minimo},
+          ${valor_maximo}, ${status_final}, ${lado}, ${especificacao_valor},
+          ${meta?.fk_modelo_cod_modelo || data.fk_modelo_cod_modelo || null}, 
+          ${meta?.fk_cod_setor || data.fk_cod_setor || null}, 
+          ${meta?.fk_funcionario_matricula || data.fk_funcionario_matricula || null},
+          ${meta?.marca || data.marca || null}, 
+          ${meta?.requisitante || data.requisitante || null}, 
+          ${meta?.lider || data.lider || null}, 
+          ${meta?.coordenador || data.coordenador || null}, 
+          ${meta?.gerente || data.gerente || null}, 
+          ${meta?.esteira || data.esteira || null},
+          ${meta?.adesivo || data.adesivo || null}, 
+          ${meta?.adesivo_fornecedor || data.adesivo_fornecedor || null},
+          ${meta?.data_realizacao || data.data_realizacao || null}, 
+          ${meta?.data_colagem || data.data_colagem || null}, 
+          ${meta?.cores || data.cores || null}, 
+          ${meta?.numero_pedido || data.numero_pedido || null}
+        )
+        RETURNING *
+      `;
+      return newRow;
+    }
+
+    return row;
+  }
+
   async edit() { throw new Error("Não implementado."); }
   async search() { throw new Error("Não implementado."); }
 }

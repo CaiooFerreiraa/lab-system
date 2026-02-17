@@ -10,6 +10,7 @@ import descolagemRoutes from "./descolagem.routes.js";
 import mscRoutes from "./msc.routes.js";
 import balancaRoutes from "./balanca.routes.js";
 import authRoutes from "./auth.routes.js";
+import productionRoutes from "./production.routes.js";
 
 
 const router = Router();
@@ -43,6 +44,7 @@ router.use("/descolagem", descolagemRoutes);
 router.use("/msc", mscRoutes);
 router.use("/balanca", balancaRoutes);
 router.use("/auth", authRoutes);
+router.use("/production", productionRoutes);
 
 
 export default router;

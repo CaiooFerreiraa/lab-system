@@ -5,12 +5,15 @@ export default class ModelModel extends BaseModel {
     super(db);
   }
 
-  async register({ nome, tipo, marca, fk_msc_id, especificacoes }) {
+  async register({ nome, tipo, marca, fk_msc_id, fk_msc_id_bn, fk_msc_id_dn, especificacoes }) {
     const cod_marca = await this.#getBrandId(marca);
 
     const [{ cod_modelo }] = await this.db`
-      INSERT INTO lab_system.modelo (nome, tipo, cod_marca, fk_msc_id)
-      VALUES (${nome}, ${tipo}, ${cod_marca}, ${fk_msc_id || null})
+      INSERT INTO lab_system.modelo (nome, tipo, cod_marca, fk_msc_id, fk_msc_id_bn, fk_msc_id_dn)
+      VALUES (
+        ${nome}, ${tipo}, ${cod_marca}, 
+        ${fk_msc_id || null}, ${fk_msc_id_bn || null}, ${fk_msc_id_dn || null}
+      )
       RETURNING cod_modelo;
     `;
 
@@ -50,10 +53,15 @@ export default class ModelModel extends BaseModel {
   async search(id) {
     // Busca o modelo e verifica se tem MSC
     const modelBase = await this.db`
-      SELECT m.*, ma.nome as marca_nome, msc.nome as msc_nome
+      SELECT m.*, ma.nome as marca_nome, 
+             msc.nome as msc_nome, 
+             msc_bn.nome as msc_bn_nome, 
+             msc_dn.nome as msc_dn_nome
       FROM lab_system.modelo m
       JOIN lab_system.marca ma ON m.cod_marca = ma.cod_marca
       LEFT JOIN lab_system.msc msc ON m.fk_msc_id = msc.id
+      LEFT JOIN lab_system.msc msc_bn ON m.fk_msc_id_bn = msc_bn.id
+      LEFT JOIN lab_system.msc msc_dn ON m.fk_msc_id_dn = msc_dn.id
       WHERE m.cod_modelo::text = ${id}::text OR m.nome = ${id}
       LIMIT 1
     `;
@@ -67,7 +75,11 @@ export default class ModelModel extends BaseModel {
       tipo: m.tipo,
       marca: m.marca_nome,
       fk_msc_id: m.fk_msc_id,
-      msc_nome: m.msc_nome, // <--- Adicionado
+      fk_msc_id_bn: m.fk_msc_id_bn,
+      fk_msc_id_dn: m.fk_msc_id_dn,
+      msc_nome: m.msc_nome,
+      msc_bn_nome: m.msc_bn_nome,
+      msc_dn_nome: m.msc_dn_nome,
       especificacoes: [],
     };
 
@@ -112,7 +124,7 @@ export default class ModelModel extends BaseModel {
     return modelo;
   }
 
-  async edit({ cod_modelo, nome, tipo, marca, especificacoes }) {
+  async edit({ cod_modelo, nome, tipo, marca, fk_msc_id_bn, fk_msc_id_dn, especificacoes }) {
     const cod_marca = await this.#getBrandId(marca);
 
     await this.db`
@@ -120,7 +132,9 @@ export default class ModelModel extends BaseModel {
       SET 
         nome = COALESCE(${nome}, nome),
         tipo = COALESCE(${tipo}, tipo),
-        cod_marca = COALESCE(${cod_marca}, cod_marca)
+        cod_marca = COALESCE(${cod_marca}, cod_marca),
+        fk_msc_id_bn = ${fk_msc_id_bn || null},
+        fk_msc_id_dn = ${fk_msc_id_dn || null}
       WHERE cod_modelo = ${cod_modelo};
     `;
 
@@ -153,10 +167,11 @@ export default class ModelModel extends BaseModel {
 
   async delete({ nome }) {
     const id = await this.#getCodModelFromName(nome);
-    await this.db`
-      DELETE FROM lab_system.modelo
-      WHERE cod_modelo = ${id};
-    `;
+    // Neon transaction expects an array of queries
+    return await this.db.transaction(tx => [
+      tx`DELETE FROM lab_system.especificacao WHERE cod_modelo = ${id}`,
+      tx`DELETE FROM lab_system.modelo WHERE cod_modelo = ${id}`
+    ]);
   }
 
   async readAll() {
@@ -167,7 +182,11 @@ export default class ModelModel extends BaseModel {
         m.tipo,
         ma.nome AS marca,
         ms.nome AS msc_nome,
+        ms_bn.nome AS msc_bn_nome,
+        ms_dn.nome AS msc_dn_nome,
         m.fk_msc_id,
+        m.fk_msc_id_bn,
+        m.fk_msc_id_dn,
         COALESCE(
           json_agg(
             json_build_object(
@@ -180,8 +199,10 @@ export default class ModelModel extends BaseModel {
       FROM lab_system.modelo AS m
       JOIN lab_system.marca AS ma ON m.cod_marca = ma.cod_marca
       LEFT JOIN lab_system.msc AS ms ON m.fk_msc_id = ms.id
+      LEFT JOIN lab_system.msc AS ms_bn ON m.fk_msc_id_bn = ms_bn.id
+      LEFT JOIN lab_system.msc AS ms_dn ON m.fk_msc_id_dn = ms_dn.id
       LEFT JOIN lab_system.especificacao AS e ON m.cod_modelo = e.cod_modelo
-      GROUP BY m.cod_modelo, m.nome, m.tipo, ma.nome, ms.nome
+      GROUP BY m.cod_modelo, m.nome, m.tipo, ma.nome, ms.nome, ms_bn.nome, ms_dn.nome
       ORDER BY m.nome;
     `;
 

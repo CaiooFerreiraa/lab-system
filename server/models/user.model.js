@@ -54,7 +54,7 @@ export default class UserModel extends BaseModel {
 
   async findAll() {
     const result = await this.db`
-      SELECT u.id, u.email, u.role, u.data_criacao, u.fk_cod_setor,
+      SELECT u.id, u.email, u.role, u.data_criacao, u.fk_cod_setor, u.fk_funcionario_matricula,
              f.nome, f.sobrenome,
              s.nome as setor_nome, s.config_perfil
       FROM lab_system.usuario u

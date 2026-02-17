@@ -6,11 +6,7 @@ export default class ModelController {
   }
 
   register = asyncHandler(async (req, res) => {
-    const { nome, tipo, marca, especificacoes } = req.body;
-
-    if (!Array.isArray(especificacoes) || especificacoes.length === 0) {
-      throw new AppError("É necessário enviar pelo menos uma especificação.");
-    }
+    const { nome, tipo, marca, especificacoes = [] } = req.body;
 
     await this.repository.register({ nome, tipo, marca, especificacoes });
     res.status(201).json({ success: true, message: "Modelo registrado com sucesso." });

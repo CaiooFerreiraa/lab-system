@@ -84,14 +84,15 @@ export default class AuthController {
       return res.status(401).json({ success: false, message: "Credenciais inválidas." });
     }
 
-    // Gerar Token com dados de setor
+    // Gerar Token com dados completos
     const token = jwt.sign(
       {
         id: user.id,
         email: user.email,
         role: user.role,
-        setor_id: user.fk_cod_setor,
-        setor_nome: user.setor_nome
+        fk_cod_setor: user.fk_cod_setor,
+        setor_nome: user.setor_nome,
+        fk_funcionario_matricula: user.fk_funcionario_matricula
       },
       this.jwtSecret,
       { expiresIn: "8h" }
@@ -105,8 +106,9 @@ export default class AuthController {
         email: user.email,
         nome: user.nome,
         role: user.role,
-        setor_id: user.fk_cod_setor,
-        setor_nome: user.setor_nome
+        fk_cod_setor: user.fk_cod_setor,
+        setor_nome: user.setor_nome,
+        fk_funcionario_matricula: user.fk_funcionario_matricula
       }
     });
   });

@@ -72,7 +72,7 @@ export const SECTOR_PERMISSIONS = {
       "HIDROLISE",
       "RESISTENCIA A LAVAGEM",
     ],
-    sidebarGroups: ["main", "engineering", "quality", "peeling"], // Removido inventory, adicionado peeling
+    sidebarGroups: ["main", "engineering", "quality", "peeling", "config"], // Removido inventory, adicionado peeling, adicionado config
     canEditTestResults: false,
   },
   "químico": {

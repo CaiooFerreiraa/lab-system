@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { testApi } from "../../services/api";
+import { testApi, descolagemApi } from "../../services/api";
 import Loader from "../common/Loader";
 
 import {
@@ -10,14 +10,19 @@ import {
 
 export default function TestReport() {
   const [report, setReport] = useState(null);
+  const [descolagemReport, setDescolagemReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("charts");
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await testApi.report();
+        const [res, dRes] = await Promise.all([
+          testApi.report(),
+          descolagemApi.report()
+        ]);
         setReport(res.data);
+        setDescolagemReport(dRes.data);
       } catch (err) {
         console.error("Erro ao carregar relatório:", err);
       } finally {
@@ -66,7 +71,7 @@ export default function TestReport() {
           <span className="material-symbols-outlined summary-card-icon">science</span>
           <div className="summary-card-data">
             <span className="summary-card-number">{summary.total}</span>
-            <span className="summary-card-label">Total de Testes</span>
+            <span className="summary-card-label">Total de Laudos</span>
           </div>
         </div>
         <div className="summary-card summary-card--success">
@@ -109,6 +114,7 @@ export default function TestReport() {
           { key: "brand", label: "Por Marca", icon: "label" },
           { key: "overview", label: "Por Modelo", icon: "category" },
           { key: "type", label: "Por Tipo de Teste", icon: "biotech" },
+          { key: "peeling", label: "Descolagem (Peeling)", icon: "layers" },
           { key: "recent", label: "Testes Recentes", icon: "history" },
         ].map((tab) => (
           <button key={tab.key}
@@ -301,7 +307,7 @@ export default function TestReport() {
                   <div className="report-stat-numbers">
                     <div className="report-stat-item">
                       <span className="report-stat-value">{row.total}</span>
-                      <span className="report-stat-label">Total</span>
+                      <span className="report-stat-label">Laudos</span>
                     </div>
                     <div className="report-stat-item report-stat-item--success">
                       <span className="report-stat-value">{row.aprovados}</span>
@@ -341,7 +347,7 @@ export default function TestReport() {
                   <th>Modelo</th>
                   <th>Marca</th>
                   <th>Tipo</th>
-                  <th>Total</th>
+                  <th>Laudos</th>
                   <th>Aprovados</th>
                   <th>Reprovados</th>
                   <th>Taxa</th>
@@ -469,6 +475,150 @@ export default function TestReport() {
                 {recent.length === 0 && (
                   <tr><td colSpan={9} className="text-muted" style={{ textAlign: "center", padding: 24 }}>Nenhum teste registrado</td></tr>
                 )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Descolagem (Peeling) */}
+      {activeTab === "peeling" && descolagemReport && (
+        <div className="report-section" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+            <h2 style={{ margin: 0 }}>Performance de Descolagem (Produção)</h2>
+            <div className="tag tag--info">Monitorando {descolagemReport.summary.total} ensaios</div>
+          </div>
+
+          <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+            {/* Performance by Leader */}
+            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ marginBottom: '20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined">group</span> Performance por Líder
+              </h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={descolagemReport.byLider.slice(0, 8)}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="lider" fontSize={10} stroke="var(--text-muted)" />
+                  <YAxis fontSize={10} stroke="var(--text-muted)" />
+                  <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '8px' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" stackId="a" />
+                  <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Performance by Coordinator */}
+            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ marginBottom: '20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined">badge</span> Performance por Coordenador
+              </h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={descolagemReport.byCoordenador?.slice(0, 8) || []}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="coordenador" fontSize={10} stroke="var(--text-muted)" />
+                  <YAxis fontSize={10} stroke="var(--text-muted)" />
+                  <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '8px' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#3b82f6" stackId="a" />
+                  <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Performance by conveyor belt */}
+            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ marginBottom: '20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined">conveyor_belt</span> Performance por Esteira
+              </h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={descolagemReport.byEsteira.slice(0, 8)} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis type="number" fontSize={10} stroke="var(--text-muted)" />
+                  <YAxis dataKey="esteira" type="category" fontSize={10} stroke="var(--text-muted)" width={80} />
+                  <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '8px' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+            {/* Table Leaders */}
+            <div className="report-table-wrapper">
+              <h4 style={{ padding: '15px', margin: 0, borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>Resumo por Líder</h4>
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Líder</th>
+                    <th>Total</th>
+                    <th>Aprovados</th>
+                    <th>Taxa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {descolagemReport.byLider.map((row, i) => (
+                    <tr key={i}>
+                      <td><strong>{row.lider}</strong></td>
+                      <td>{row.total}</td>
+                      <td className="text-success">{row.aprovados}</td>
+                      <td>{row.total > 0 ? ((row.aprovados / row.total) * 100).toFixed(1) : "0"}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Coordinators */}
+            <div className="report-table-wrapper">
+              <h4 style={{ padding: '15px', margin: 0, borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>Resumo por Coordenador</h4>
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Coordenador</th>
+                    <th>Total</th>
+                    <th>Aprovados</th>
+                    <th>Taxa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(descolagemReport.byCoordenador || []).map((row, i) => (
+                    <tr key={i}>
+                      <td><strong>{row.coordenador}</strong></td>
+                      <td>{row.total}</td>
+                      <td className="text-success">{row.aprovados}</td>
+                      <td>{row.total > 0 ? ((row.aprovados / row.total) * 100).toFixed(1) : "0"}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="report-table-wrapper" style={{ marginTop: '20px' }}>
+            <h4 style={{ padding: '15px', margin: 0, borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>Resumo por Esteira</h4>
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th>Esteira</th>
+                  <th>Total</th>
+                  <th>Aprovados</th>
+                  <th>Reprovados</th>
+                  <th>Taxa Aprovação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {descolagemReport.byEsteira.map((row, i) => (
+                  <tr key={i}>
+                    <td><strong>{row.esteira}</strong></td>
+                    <td>{row.total}</td>
+                    <td className="text-success">{row.aprovados}</td>
+                    <td className="text-danger">{row.reprovados}</td>
+                    <td>
+                      <div className="mini-bar"><div className="mini-bar-fill" style={{ width: `${(row.total > 0 ? (row.aprovados / row.total * 100) : 0).toFixed(0)}%`, background: 'var(--accent-primary)' }}></div></div>
+                      {row.total > 0 ? ((row.aprovados / row.total) * 100).toFixed(1) : "0"}%
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

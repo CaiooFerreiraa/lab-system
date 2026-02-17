@@ -6,7 +6,12 @@ export default class ProductController {
   }
 
   register = asyncHandler(async (req, res) => {
-    await this.repository.register(req.body);
+    const data = req.body;
+    // Fallback: Se não informado, pega o setor do usuário logado
+    if (!data.setor && req.user?.fk_cod_setor) {
+      data.setor = req.user.fk_cod_setor;
+    }
+    await this.repository.register(data);
     res.status(201).json({ success: true, message: "Material registrado com sucesso." });
   });
 

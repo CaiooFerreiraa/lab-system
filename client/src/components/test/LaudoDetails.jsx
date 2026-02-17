@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { testApi, enumApi, sectorApi } from "../../services/api";
+import { testApi, enumApi, sectorApi, descolagemApi } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { getSectorPermissions } from "../../config/permissions";
 import Loader from "../common/Loader";
@@ -17,15 +17,31 @@ export default function LaudoDetails() {
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
 
-  const perms = useMemo(() => getSectorPermissions(user?.setor_nome, user?.role), [user]);
+  const perms = useMemo(() => getSectorPermissions(user?.setor_nome, user?.role, user?.config_perfil), [user]);
   const canEditResults = perms.canEditTestResults;
+
+  const MULTI_VALUE_TESTS = {
+    'ALONGAMENTO': 3,
+    'TRACAO': 3,
+    'RASGAMENTO': 3,
+    'DENSIDADE': 3,
+    'MODULO 300%': 3,
+    'COMPRESSION SET': 5,
+    'ENCOLHIMENTO': 6
+  };
+
+  const PERCENT_TESTS = ['ALONGAMENTO', 'COMPRESSION SET'];
 
   const [isEditingSector, setIsEditingSector] = useState(false);
   const [tempSector, setTempSector] = useState("");
 
   // Estado para novo teste
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newTest, setNewTest] = useState({ fk_tipo_cod_tipo: "", resultado: "", data_fim: "" });
+  const [newTest, setNewTest] = useState({ fk_tipo_cod_tipo: "", resultado: "", data_fim: "", valores: [] });
+
+  // Estado para valores temporários dos testes da tabela (para cálculo de média)
+  const [rowValues, setRowValues] = useState({});
+  const [changedResults, setChangedResults] = useState({}); // { [cod_teste]: { resultado, status? } }
 
   const fetchData = async () => {
     setLoading(true);
@@ -63,15 +79,61 @@ export default function LaudoDetails() {
     }
   };
 
+  const handleUpdateStatus = async (newStatus) => {
+    if (!canEditResults) return;
+
+    // Se o status for 'Recebido' e o laudo ainda não tiver data de recebimento,
+    // usamos a função específica de recebimento para calcular o prazo.
+    if (newStatus === 'Recebido' && !laudo.data_recebimento) {
+      await handleReceiveLaudo();
+      return;
+    }
+
+    // Se houver alterações pendentes e estiver concluindo, salva antes
+    if (newStatus === 'Concluído' && Object.keys(changedResults).length > 0) {
+      const ok = confirm("Existem resultados de testes não salvos. Deseja aplicá-los agora ao concluir o laudo?");
+      if (ok) {
+        await handleSaveAllTests(false); // Salva mas não recarrega aqui, recarrega depois do status
+      }
+    }
+
+    setLoading(true);
+    try {
+      await testApi.updateLaudo(id, { status_geral: newStatus });
+      fetchData();
+    } catch (err) {
+      setPopup({ show: true, msg: "Erro ao atualizar status." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReceiveLaudo = async () => {
+    if (!canEditResults) return;
+    setLoading(true);
+    try {
+      await testApi.receiveLaudo(id);
+      fetchData();
+    } catch (err) {
+      setPopup({ show: true, msg: "Erro ao marcar como recebido: " + err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddTest = async (e) => {
     e.preventDefault();
     if (!canEditResults) return;
     setLoading(true);
     try {
-      await testApi.addTestToLaudo(id, newTest);
+      const payload = {
+        ...newTest,
+        resultado: (newTest.resultado && !isNaN(parseFloat(newTest.resultado))) ? parseFloat(newTest.resultado) : null
+      };
+      await testApi.addTestToLaudo(id, payload);
       setPopup({ show: true, msg: "Teste adicionado ao laudo com sucesso!" });
       setShowAddForm(false);
-      setNewTest({ fk_tipo_cod_tipo: "", resultado: "", data_fim: "" });
+      setNewTest({ fk_tipo_cod_tipo: "", resultado: "", data_fim: "", valores: [] });
       fetchData(); // Recarrega laudo
     } catch (err) {
       setPopup({ show: true, msg: "Erro ao adicionar teste." });
@@ -80,17 +142,32 @@ export default function LaudoDetails() {
     }
   };
 
-  const handleUpdateTestStatus = async (codTeste, resultado) => {
+  const handleSaveAllTests = async (shouldFetch = true) => {
     if (!canEditResults) return;
     setLoading(true);
     try {
-      await testApi.update({ cod_teste: codTeste, resultado: parseFloat(resultado) });
-      fetchData();
+      const promises = Object.entries(changedResults).map(([cod_teste, data]) => {
+        const numericVal = (data.resultado && !isNaN(parseFloat(data.resultado))) ? parseFloat(data.resultado) : null;
+        return testApi.update({ cod_teste, resultado: numericVal });
+      });
+      await Promise.all(promises);
+      setChangedResults({});
+      if (shouldFetch) {
+        setPopup({ show: true, msg: "Todos os resultados foram salvos e processados!" });
+        fetchData();
+      }
     } catch (err) {
-      setPopup({ show: true, msg: "Erro ao atualizar teste." });
+      setPopup({ show: true, msg: "Erro ao salvar um ou mais resultados." });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUpdateTestStatus = (codTeste, resultado) => {
+    setChangedResults(prev => ({
+      ...prev,
+      [codTeste]: { ...prev[codTeste], resultado }
+    }));
   };
 
   if (!laudo && !loading) return <div className="empty-state">Laudo não encontrado.</div>;
@@ -115,9 +192,33 @@ export default function LaudoDetails() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <h1 className="page-title" style={{ margin: 0, fontSize: '2rem' }}>{laudo?.codigo_laudo || `Laudo #${id}`}</h1>
-              <span className={`tag ${laudo?.status_geral === 'Aprovado' ? 'tag--success' : 'tag--danger'}`} style={{ fontSize: '1rem' }}>
-                {laudo?.status_geral}
-              </span>
+              {canEditResults ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="status-selector-wrapper">
+                    <select
+                      value={laudo?.status_geral}
+                      onChange={(e) => handleUpdateStatus(e.target.value)}
+                      className={`filter-input status-select status-select--${laudo?.status_geral?.toLowerCase().replace(/\s+/g, '-')}`}
+                      style={{ height: '42px', minWidth: '160px' }}
+                    >
+                      <option value="Pendente">Pendente</option>
+                      <option value="Recebido">Recebido</option>
+                      <option value="Em Andamento">Em Andamento</option>
+                      <option value="Aprovado">Aprovado</option>
+                      <option value="Reprovado">Reprovado</option>
+                      <option value="Concluído">Concluído</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <span className={`tag ${laudo?.status_geral === 'Aprovado' ? 'tag--success' :
+                  laudo?.status_geral === 'Recebido' ? 'tag--info' :
+                    laudo?.status_geral === 'Pendente' ? 'tag--warning' :
+                      laudo?.status_geral === 'Em Andamento' ? 'tag--info' : 'tag--danger'
+                  }`} style={{ fontSize: '1rem' }}>
+                  {laudo?.status_geral}
+                </span>
+              )}
             </div>
             <p className="text-secondary" style={{ marginTop: '8px', fontSize: '1.1rem' }}>
               <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', fontSize: '18px', marginRight: '4px' }}>inventory_2</span>
@@ -149,6 +250,54 @@ export default function LaudoDetails() {
             <div className="info-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
               <span className="info-label" style={{ display: 'block', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '8px' }}>Data de Criação</span>
               <span className="info-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{new Date(laudo?.data_criacao).toLocaleDateString()}</span>
+            </div>
+
+            <div className="info-card" style={{
+              background: 'var(--bg-card)',
+              padding: '20px',
+              borderRadius: '12px',
+              border: laudo?.data_prazo && new Date(laudo.data_prazo) < new Date() && !['Aprovado', 'Reprovado', 'Concluído'].includes(laudo.status_geral)
+                ? '1px solid var(--accent-danger)'
+                : '1px solid var(--border-color)',
+              boxShadow: laudo?.data_prazo && new Date(laudo.data_prazo) < new Date() && !['Aprovado', 'Reprovado', 'Concluído'].includes(laudo.status_geral)
+                ? '0 0 10px rgba(239, 68, 68, 0.2)'
+                : 'none'
+            }}>
+              <span className="info-label" style={{ display: 'flex', justifyContent: 'space-between', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                PRAZO DE ENTREGA
+                {laudo?.setor_sla_dias && <span style={{ fontSize: '0.65rem' }}>SLA: {laudo.setor_sla_dias} dias úteis</span>}
+              </span>
+              <div className="info-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                {laudo?.data_prazo ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {new Date(laudo.data_prazo).toLocaleDateString()}
+                    {new Date(laudo.data_prazo) < new Date() && !['Aprovado', 'Reprovado', 'Concluído'].includes(laudo.status_geral) && (
+                      <span className="tag tag--danger" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>ATRASADO</span>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Aguardando Recebimento</span>
+                    {canEditResults && laudo?.status_geral === 'Pendente' && (
+                      <button
+                        onClick={handleReceiveLaudo}
+                        className="btn btn-primary btn-sm"
+                        style={{ borderRadius: '8px', padding: '10px', background: 'var(--accent-success)', width: '100%', marginTop: '5px' }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check_circle</span>
+                        MARCAR COMO RECEBIDO
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="info-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <span className="info-label" style={{ display: 'block', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '8px' }}>Recebido em</span>
+              <span className="info-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                {laudo?.data_recebimento ? new Date(laudo.data_recebimento).toLocaleDateString() : '-'}
+              </span>
             </div>
 
             <div className="info-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', position: 'relative' }}>
@@ -196,6 +345,71 @@ export default function LaudoDetails() {
           </div>
         </section>
 
+        {laudo?.setor_nome === 'Pré-Fabricado' && (
+          <section className="descolagem-meta-section" style={{
+            background: 'var(--bg-card)',
+            padding: '24px',
+            borderRadius: '16px',
+            border: '1px solid var(--accent-primary)',
+            marginBottom: '32px',
+            boxShadow: '0 4px 20px rgba(60, 120, 255, 0.1)'
+          }}>
+            <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-primary)', marginBottom: '20px' }}>
+              <span className="material-symbols-outlined">analytics</span>
+              <h3 style={{ margin: 0 }}>Dados Técnicos de Descolagem (Peeling)</h3>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+              {/* Painel de Metadados Herdados */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '15px' }}>Informações de Produção</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.9rem' }}>
+                  <div className="meta-item"><span>Requisitante:</span> <strong>{laudo.descolagem?.[0]?.requisitante || '-'}</strong></div>
+                  <div className="meta-item"><span>Líder:</span> <strong>{laudo.descolagem?.[0]?.lider || '-'}</strong></div>
+                  <div className="meta-item"><span>Coordenador:</span> <strong>{laudo.descolagem?.[0]?.coordenador || '-'}</strong></div>
+                  <div className="meta-item"><span>Gerente:</span> <strong>{laudo.descolagem?.[0]?.gerente || '-'}</strong></div>
+                  <div className="meta-item"><span>Esteira:</span> <strong>{laudo.descolagem?.[0]?.esteira || '-'}</strong></div>
+                  <div className="meta-item"><span>Adesivo:</span> <strong>{laudo.descolagem?.[0]?.adesivo || '-'}</strong></div>
+                  <div className="meta-item"><span>Fornecedor:</span> <strong>{laudo.descolagem?.[0]?.adesivo_fornecedor || '-'}</strong></div>
+                  <div className="meta-item"><span>Data Colagem:</span> <strong>{laudo.descolagem?.[0]?.data_colagem ? new Date(laudo.descolagem[0].data_colagem).toLocaleDateString() : '-'}</strong></div>
+                </div>
+              </div>
+
+              {/* Painel de Upload de PDFs */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '5px' }}>Vincular Laudos Técnicos (PDF)</h4>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <FileUploadBox
+                    label="PÉ ESQUERDO"
+                    lado="Esquerdo"
+                    laudoId={id}
+                    current={laudo.descolagem?.find(d => d.lado === 'Esquerdo')}
+                    onUploaded={fetchData}
+                  />
+                  <FileUploadBox
+                    label="PÉ DIREITO"
+                    lado="Direito"
+                    laudoId={id}
+                    current={laudo.descolagem?.find(d => d.lado === 'Direito')}
+                    onUploaded={fetchData}
+                  />
+                </div>
+
+                <div style={{ marginTop: '5px' }}>
+                  <FileUploadBox
+                    label="LAUDO ÚNICO / OUTROS"
+                    lado="Único"
+                    laudoId={id}
+                    current={laudo.descolagem?.find(d => d.lado === 'Único')}
+                    onUploaded={fetchData}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="test-section" style={{
           background: 'var(--bg-card)',
           padding: '24px',
@@ -210,14 +424,22 @@ export default function LaudoDetails() {
             marginBottom: '24px'
           }}>
             <h3 style={{ margin: 0 }}>Testes Vinculados</h3>
-            {canEditResults && (
-              <button className={`btn btn-sm ${showAddForm ? 'btn-secondary' : 'btn-primary'}`}
-                onClick={() => setShowAddForm(!showAddForm)}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="material-symbols-outlined">{showAddForm ? 'close' : 'add'}</span>
-                {showAddForm ? "Cancelar" : "Novo Teste"}
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {Object.keys(changedResults).length > 0 && (
+                <button className="btn btn-sm btn-success" onClick={() => handleSaveAllTests()} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent-success)', color: '#fff' }}>
+                  <span className="material-symbols-outlined">save</span>
+                  Salvar Alterações ({Object.keys(changedResults).length})
+                </button>
+              )}
+              {canEditResults && (
+                <button className={`btn btn-sm ${showAddForm ? 'btn-secondary' : 'btn-primary'}`}
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="material-symbols-outlined">{showAddForm ? 'close' : 'add'}</span>
+                  {showAddForm ? "Cancelar" : "Novo Teste"}
+                </button>
+              )}
+            </div>
           </div>
 
           {showAddForm && canEditResults && (
@@ -232,22 +454,110 @@ export default function LaudoDetails() {
                 <div className="form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
                   <div className="form-group">
                     <label>Tipo de Teste *</label>
-                    <select value={newTest.fk_tipo_cod_tipo} onChange={e => setNewTest({ ...newTest, fk_tipo_cod_tipo: e.target.value })} required>
+                    <select
+                      value={newTest.fk_tipo_cod_tipo}
+                      onChange={e => setNewTest({ ...newTest, fk_tipo_cod_tipo: e.target.value, valores: [], resultado: "" })}
+                      required
+                    >
                       <option value="">Selecione</option>
                       {testTypes.map(t => <option key={t.cod_tipo} value={t.cod_tipo}>{t.nome}</option>)}
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label>Resultado *</label>
-                    <div style={{ position: 'relative' }}>
-                      <input type="number" step="any" value={newTest.resultado} onChange={e => setNewTest({ ...newTest, resultado: e.target.value })} required />
-                    </div>
+                  <div className="form-group" style={{
+                    flex: MULTI_VALUE_TESTS[testTypes.find(t => String(t.cod_tipo) === String(newTest.fk_tipo_cod_tipo))?.nome?.toUpperCase()] ? '2' : '1'
+                  }}>
+                    <label>
+                      Resultado {testTypes.find(t => String(t.cod_tipo) === String(newTest.fk_tipo_cod_tipo))?.nome?.toUpperCase() === 'DESCOLAGEM' ? '' : '*'} {MULTI_VALUE_TESTS[testTypes.find(t => String(t.cod_tipo) === String(newTest.fk_tipo_cod_tipo))?.nome?.toUpperCase()] && "(Média Automática)"}
+                    </label>
+
+                    {(() => {
+                      const typeName = testTypes.find(t => String(t.cod_tipo) === String(newTest.fk_tipo_cod_tipo))?.nome?.toUpperCase();
+                      const numFields = MULTI_VALUE_TESTS[typeName];
+                      const isPercent = PERCENT_TESTS.includes(typeName);
+
+                      if (numFields) {
+                        return (
+                          <div className="test-inputs-container" style={{ marginTop: '10px' }}>
+                            <div className="test-inputs-grid">
+                              {[...Array(numFields)].map((_, i) => (
+                                <input
+                                  key={i}
+                                  type="number"
+                                  step="any"
+                                  className="filter-input"
+                                  placeholder={`V${i + 1}`}
+                                  style={{ textAlign: 'center' }}
+                                  value={newTest.valores?.[i] || ""}
+                                  onChange={(e) => {
+                                    const newVals = [...(newTest.valores || [])];
+                                    newVals[i] = e.target.value;
+                                    const validVals = newVals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+                                    let avg = "";
+                                    if (validVals.length > 0) {
+                                      avg = (validVals.reduce((a, b) => a + b, 0) / validVals.length).toFixed(2);
+                                    }
+                                    setNewTest({ ...newTest, valores: newVals, resultado: avg });
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            {isPercent && (
+                              <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '1.2rem', padding: '0 10px' }}>%</span>
+                            )}
+                            <div className="result-badge-premium">
+                              {newTest.resultado || "---"}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type={testTypes.find(t => String(t.cod_tipo) === String(newTest.fk_tipo_cod_tipo))?.nome?.toUpperCase() === 'DESCOLAGEM' ? "text" : "number"}
+                            step="any"
+                            value={newTest.resultado}
+                            className="filter-input"
+                            onChange={e => setNewTest({ ...newTest, resultado: e.target.value })}
+                            required={testTypes.find(t => String(t.cod_tipo) === String(newTest.fk_tipo_cod_tipo))?.nome?.toUpperCase() !== 'DESCOLAGEM'}
+                            placeholder={testTypes.find(t => String(t.cod_tipo) === String(newTest.fk_tipo_cod_tipo))?.nome?.toUpperCase() === 'DESCOLAGEM' ? "Opcional..." : "Valor..."}
+                            style={{ width: '100px', fontWeight: '700', fontSize: '1rem' }}
+                          />
+                          {isPercent && (
+                            <span style={{
+                              color: 'var(--accent-primary)',
+                              fontWeight: 'bold',
+                              fontSize: '0.9rem',
+                              background: 'rgba(60,120,255,0.1)',
+                              padding: '8px 12px',
+                              borderRadius: '8px',
+                              border: '1px solid rgba(60,120,255,0.2)'
+                            }}>%</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="form-group">
                     <label>Data Fim (opcional)</label>
                     <input type="date" value={newTest.data_fim} onChange={e => setNewTest({ ...newTest, data_fim: e.target.value })} />
                   </div>
                 </div>
+
+                {newTest.fk_tipo_cod_tipo && (
+                  <div className="test-spec-hint-clean">
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>analytics</span>
+                    {(() => {
+                      const typeName = testTypes.find(t => String(t.cod_tipo) === String(newTest.fk_tipo_cod_tipo))?.nome;
+                      const spec = modelSpecs.find(s => s.tipo === typeName);
+                      return spec ? (
+                        <span>Norma esperada: <strong style={{ color: 'var(--text-primary)' }}>{spec.label}</strong></span>
+                      ) : (
+                        <span>Nenhuma norma específica cadastrada para este teste.</span>
+                      );
+                    })()}
+                  </div>
+                )}
                 <div style={{ marginTop: '16px', textAlign: 'right' }}>
                   <button type="submit" className="btn btn-primary">Gravar no Laudo</button>
                 </div>
@@ -269,29 +579,101 @@ export default function LaudoDetails() {
               <tbody>
                 {laudo?.testes?.map(t => (
                   <tr key={t.cod_teste} className="test-row" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                    <td style={{ padding: '16px', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>
-                      <strong>{t.tipo_nome}</strong>
+                    <td style={{ padding: '20px', borderTopLeftRadius: '12px', borderBottomLeftRadius: '12px', minWidth: '220px' }}>
+                      <div className="test-type-label">{t.tipo_nome}</div>
                     </td>
                     <td style={{ padding: '16px' }}>
-                      <input
-                        type="number"
-                        disabled={!canEditResults}
-                        defaultValue={t.resultado}
-                        onBlur={(e) => handleUpdateTestStatus(t.cod_teste, e.target.value)}
-                        style={{
-                          width: '90px',
-                          padding: '6px 10px',
-                          background: 'var(--bg-input)',
-                          border: '1px solid var(--border-color)',
-                          borderRadius: '6px',
-                          color: 'var(--text-primary)',
-                          fontWeight: '500',
-                          opacity: canEditResults ? 1 : 0.7
-                        }}
-                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {(() => {
+                          const typeName = t.tipo_nome?.toUpperCase();
+                          const numFields = MULTI_VALUE_TESTS[typeName];
+                          const isPercent = PERCENT_TESTS.includes(typeName);
+
+                          if (numFields) {
+                            return (
+                              <div className="test-inputs-container">
+                                <div className="test-inputs-grid">
+                                  {[...Array(numFields)].map((_, i) => (
+                                    <input
+                                      key={i}
+                                      type="number"
+                                      step="any"
+                                      className="filter-input"
+                                      placeholder={`V${i + 1}`}
+                                      disabled={!canEditResults}
+                                      style={{ textAlign: 'center' }}
+                                      onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                                      onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
+                                      value={rowValues[t.cod_teste]?.[i] ?? ""}
+                                      onChange={(e) => {
+                                        const newVals = [...(rowValues[t.cod_teste] || Array(numFields).fill(""))];
+                                        newVals[i] = e.target.value;
+                                        setRowValues({ ...rowValues, [t.cod_teste]: newVals });
+
+                                        const validVals = newVals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+                                        if (validVals.length > 0) {
+                                          const avg = (validVals.reduce((a, b) => a + b, 0) / validVals.length).toFixed(2);
+                                          handleUpdateTestStatus(t.cod_teste, avg);
+                                        }
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+
+                                {isPercent && (
+                                  <span style={{
+                                    color: 'var(--accent-primary)',
+                                    fontWeight: 'bold',
+                                    fontSize: '1.2rem',
+                                    padding: '0 10px'
+                                  }}>%</span>
+                                )}
+
+                                <div className={`result-badge-premium ${changedResults[t.cod_teste] ? 'result-badge-changed' : ''}`}>
+                                  {changedResults[t.cod_teste]?.resultado || t.resultado || "---"}
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type={t.tipo_nome?.toUpperCase() === 'DESCOLAGEM' ? "text" : "number"}
+                                disabled={!canEditResults}
+                                className="filter-input"
+                                value={changedResults[t.cod_teste]?.resultado ?? t.resultado}
+                                onChange={(e) => handleUpdateTestStatus(t.cod_teste, e.target.value)}
+                                style={{
+                                  width: '100px',
+                                  border: changedResults[t.cod_teste] ? '2px solid #fb923c' : '1px solid var(--border-color)',
+                                  fontWeight: '700',
+                                  fontSize: '1rem',
+                                  boxShadow: changedResults[t.cod_teste] ? '0 0 10px rgba(251, 146, 60, 0.2)' : 'inset 0 1px 3px rgba(0,0,0,0.2)',
+                                  opacity: canEditResults ? 1 : 0.7
+                                }}
+                              />
+                              {isPercent && (
+                                <span style={{
+                                  color: 'var(--accent-primary)',
+                                  fontWeight: 'bold',
+                                  fontSize: '0.9rem',
+                                  background: 'rgba(60,120,255,0.1)',
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid rgba(60,120,255,0.2)'
+                                }}>%</span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </td>
                     <td style={{ padding: '16px' }}>
-                      <span className={`tag ${t.status === 'Aprovado' ? 'tag--success' : 'tag--danger'}`}
+                      <span className={`tag ${t.status === 'Aprovado' ? 'tag--success' :
+                        t.status === 'Reprovado' ? 'tag--danger' :
+                          'tag--info'
+                        }`}
                         style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
                         {t.status}
                       </span>
@@ -302,9 +684,7 @@ export default function LaudoDetails() {
                     {canEditResults && (
                       <td style={{ padding: '16px', borderTopRightRadius: '8px', borderBottomRightRadius: '8px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                          <Link to={`/test/edit/${t.cod_teste}`} className="icon-btn" title="Editar detalhes">
-                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
-                          </Link>
+                          {/* Link de edição removido a pedido do usuário */}
                           <button
                             className="icon-btn icon-btn--danger"
                             onClick={async () => {
@@ -327,5 +707,108 @@ export default function LaudoDetails() {
         </section>
       </main>
     </>
+  );
+}
+
+function FileUploadBox({ label, lado, laudoId, current, onUploaded }) {
+  const [uploading, setUploading] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || "";
+  const hasFile = current && current.arquivo_path;
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("arquivo", file);
+      formData.append("fk_laudo_id", laudoId);
+      formData.append("lado", lado);
+      formData.append("titulo", `Laudo Técnico ${lado} - #${laudoId}`);
+
+      await descolagemApi.upload(formData);
+      onUploaded();
+    } catch (err) {
+      alert("Erro no upload: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.03)',
+      padding: '15px',
+      borderRadius: '10px',
+      border: hasFile ? '1px solid var(--accent-success)' : '1px dashed var(--border-color)',
+      textAlign: 'center',
+      position: 'relative',
+      overflow: 'hidden',
+      transition: 'all 0.3s ease'
+    }}>
+      <span style={{ fontSize: '0.7rem', fontWeight: '900', color: hasFile ? 'var(--accent-success)' : 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+        {label}
+      </span>
+
+      {uploading ? (
+        <div className="spinner-small" style={{ margin: '10px auto' }}></div>
+      ) : hasFile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-success)', fontSize: '0.85rem', fontWeight: 'bold' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check_circle</span>
+            VINCULADO
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Média: <strong>{current.valor_media}</strong> | {current.status_final}
+          </div>
+          <div style={{ display: 'flex', gap: '5px' }}>
+            <a href={`${API_URL}${current.arquivo_path}`} target="_blank" rel="noreferrer" className="tag tag--info" style={{ textDecoration: 'none', cursor: 'pointer', padding: '2px 8px' }}>Ver PDF</a>
+            <label style={{ cursor: 'pointer', padding: '2px 8px' }} className="tag tag--muted">
+              Trocar
+              <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleFileChange} />
+            </label>
+          </div>
+        </div>
+      ) : (
+        <label style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '24px', color: 'var(--accent-primary)' }}>upload_file</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--accent-primary)', fontWeight: 'bold' }}>Anexar PDF</span>
+          <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleFileChange} />
+        </label>
+      )}
+
+      <style>{`
+        .meta-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0; display: flex; justify-content: space-between; }
+        .meta-item span { color: var(--text-muted); }
+        .spinner-small { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .status-select {
+          padding: 6px 30px 6px 16px;
+          border-radius: 20px;
+          font-size: 0.85rem;
+          font-weight: 800;
+          cursor: pointer;
+          border: 1.5px solid currentColor;
+          outline: none;
+          transition: all 0.2s ease;
+          background: transparent;
+          width: auto;
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 5 3 3 3-3'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 12px center;
+        }
+        .status-select:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .status-select option { background: #1a1d27; color: #f8fafc; padding: 12px; font-weight: 600; }
+        .status-select--pendente { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+        .status-select--recebido { color: #00bcd4; background: rgba(0, 188, 212, 0.1); }
+        .status-select--em-andamento { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .status-select--aprovado { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .status-select--reprovado { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .status-select--concluido { color: #a78bfa; background: rgba(167, 139, 250, 0.1); }
+      `}</style>
+    </div>
   );
 }

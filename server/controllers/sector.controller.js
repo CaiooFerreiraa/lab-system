@@ -6,7 +6,16 @@ export default class SectorController {
   }
 
   register = asyncHandler(async (req, res) => {
-    await this.repository.register(req.body);
+    const body = req.body;
+
+    // 1. Cadastra Setor
+    const sector = await this.repository.register(body);
+
+    // 2. Se vierem SLAs granulares, cadastra-os
+    if (body.slas && Array.isArray(body.slas) && sector) {
+      await this.repository.updateGranularSLAs(sector.id, body.slas);
+    }
+
     res.status(201).json({ success: true, message: "Setor registrado com sucesso." });
   });
 
@@ -16,8 +25,20 @@ export default class SectorController {
   });
 
   edit = asyncHandler(async (req, res) => {
-    const { oldName, newName } = req.query;
-    await this.repository.edit(oldName, newName);
+    const { oldName } = req.query;
+    const body = req.body;
+
+    // 1. Atualiza dados básicos do setor
+    await this.repository.edit(oldName, body);
+
+    // 2. Se vierem SLAs granulares, atualiza-os
+    if (body.slas && Array.isArray(body.slas)) {
+      const sector = await this.repository.search(body.newName || oldName);
+      if (sector) {
+        await this.repository.updateGranularSLAs(sector.id, body.slas);
+      }
+    }
+
     res.json({ success: true, message: "Setor atualizado com sucesso." });
   });
 

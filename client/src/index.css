@@ -43,6 +43,28 @@
   --sidebar-collapsed: 72px;
 }
 
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.tag--danger {
+  background: var(--accent-danger);
+  color: white;
+}
+
 /* ---- Light Theme ---- */
 [data-theme='light'] {
   --bg-primary: #f8fafc;
@@ -741,16 +763,7 @@ textarea {
 }
 
 .filter-input {
-  width: 100%;
   height: 42px;
-  padding: 0 16px;
-  background: var(--bg-input);
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all var(--transition-fast);
 }
 
 .filter-input:focus {
@@ -762,7 +775,8 @@ textarea {
 
 .form-group input,
 .form-group select,
-.form-group textarea {
+.form-group textarea,
+.filter-input {
   width: 100%;
   padding: 12px 16px;
   background: var(--bg-input);
@@ -772,6 +786,7 @@ textarea {
   transition: all var(--transition-fast);
   font-size: 0.95rem;
   font-weight: 400;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .form-group input:focus,
@@ -781,6 +796,19 @@ textarea {
   border-color: var(--border-focus);
   background: var(--bg-card);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+/* Padronização de Inputs de Valor (Número) - Remove as setas padrão */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  appearance: textfield;
+  -moz-appearance: textfield;
 }
 
 .form-group input:disabled {
@@ -793,12 +821,16 @@ textarea {
   resize: vertical;
 }
 
-.form-group select {
+.form-group select,
+.filter-input.status-select,
+select.filter-input {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%239aa0b0'/%3E%3C/svg%3E");
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 14px center;
-  padding-right: 36px;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px !important;
 }
 
 .form-row {
@@ -2583,4 +2615,169 @@ textarea {
 
 [data-theme='light'] .user-mgmt-table td {
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* ========================================
+   LAUDO GRID & CARDS
+   ======================================== */
+.laudo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.laudo-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.laudo-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(59, 130, 246, 0.1);
+  background: var(--bg-card-hover);
+}
+
+.laudo-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.laudo-status-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all var(--transition-fast);
+}
+
+.status--pass {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--accent-success);
+}
+
+.status--fail {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--accent-danger);
+}
+
+.laudo-card-body h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.laudo-card-footer {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.laudo-card-hover-icon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  opacity: 0;
+  color: var(--accent-primary);
+  transition: all var(--transition-normal);
+  transform: translateX(-10px);
+}
+
+.laudo-card:hover .laudo-card-hover-icon {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ========================================
+   TEST RESULTS UI
+   ======================================== */
+.test-row-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+.test-row-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(60, 120, 255, 0.2);
+}
+
+.test-inputs-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.test-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(80px, 1fr));
+  gap: 8px;
+  max-width: fit-content;
+}
+
+.result-badge-premium {
+  padding: 10px 20px;
+  background: rgba(60, 120, 255, 0.1);
+  border: 1px solid var(--accent-primary);
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--accent-primary);
+  box-shadow: 0 4px 12px rgba(60, 120, 255, 0.1);
+  min-width: 80px;
+  text-align: center;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-badge-changed {
+  background: rgba(251, 146, 60, 0.15);
+  border-color: #fb923c;
+  color: #fb923c;
+  box-shadow: 0 4px 12px rgba(251, 146, 60, 0.2);
+}
+
+.test-spec-hint-clean {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: rgba(60, 120, 255, 0.05);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 3px solid var(--accent-primary);
+}
+
+.test-type-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 200px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }

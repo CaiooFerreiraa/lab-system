@@ -41,15 +41,6 @@ const NAV_GROUPS = [
     ]
   },
   {
-    id: "peeling",
-    label: "Descolagem & PDF",
-    icon: "layers",
-    items: [
-      { path: "/descolagem", label: "Enviar PDF", icon: "picture_as_pdf", excludes: ["/descolagem/report"] },
-      { path: "/descolagem/report", label: "Performance", icon: "analytics", exact: true },
-    ]
-  },
-  {
     id: "inventory",
     label: "Instrumentação",
     icon: "precision_manufacturing",
@@ -62,9 +53,16 @@ const NAV_GROUPS = [
     label: "Administração",
     icon: "admin_panel_settings",
     // Visível apenas para admin e moderator (gerenciado no filtro abaixo)
-    requiredRoles: ["admin", "moderator"],
     items: [
       { path: "/users", label: "Usuários", icon: "manage_accounts" },
+    ]
+  },
+  {
+    id: "config",
+    label: "Configurações",
+    icon: "settings",
+    items: [
+      { path: "/production/settings", label: "Opções de Produção", icon: "settings_suggest" },
     ]
   }
 ];

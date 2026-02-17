@@ -8,7 +8,8 @@ export default function ModelRegister() {
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("");
   const [marca, setMarca] = useState("");
-  const [fkMscId, setFkMscId] = useState("");
+  const [fkMscIdBn, setFkMscIdBn] = useState("");
+  const [fkMscIdDn, setFkMscIdDn] = useState("");
   const [mscList, setMscList] = useState([]);
   const [marks, setMarks] = useState([]);
   const [shoeTypes, setShoeTypes] = useState([]);
@@ -43,10 +44,11 @@ export default function ModelRegister() {
         nome,
         tipo,
         marca,
-        fk_msc_id: fkMscId
+        fk_msc_id_bn: fkMscIdBn,
+        fk_msc_id_dn: fkMscIdDn
       });
       setPopup({ show: true, msg: "Modelo cadastrado com sucesso!" });
-      setNome(""); setTipo(""); setMarca(""); setFkMscId("");
+      setNome(""); setTipo(""); setMarca(""); setFkMscIdBn(""); setFkMscIdDn("");
     } catch (err) {
       setPopup({ show: true, msg: err.message });
     } finally {
@@ -95,13 +97,22 @@ export default function ModelRegister() {
               </div>
 
               <div className="form-group">
-                <label>Ficha Técnica (MSC) *</label>
+                <label>Ficha Técnica BN *</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <select value={fkMscId} onChange={(e) => setFkMscId(e.target.value)} required style={{ flex: 1 }}>
-                    <option value="">Selecione a MSC</option>
+                  <select value={fkMscIdBn} onChange={(e) => setFkMscIdBn(e.target.value)} required style={{ flex: 1 }}>
+                    <option value="">Selecione a MSC BN</option>
                     {mscList.map(m => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
                   </select>
-                  <Link to="/msc/register" className="btn btn-sm btn-outline" title="Nova MSC">+</Link>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Ficha Técnica DN *</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <select value={fkMscIdDn} onChange={(e) => setFkMscIdDn(e.target.value)} required style={{ flex: 1 }}>
+                    <option value="">Selecione a MSC DN</option>
+                    {mscList.map(m => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
+                  </select>
                 </div>
               </div>
             </div>

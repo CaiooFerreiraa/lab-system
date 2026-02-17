@@ -5,12 +5,14 @@ export default class SectorModel extends BaseModel {
     super(db);
   }
 
-  async register({ nome, config_perfil }) {
+  async register({ nome, config_perfil, sla_entrega_dias }) {
     try {
-      await this.db`
-        INSERT INTO lab_system.setor(nome, config_perfil)
-        VALUES (${nome}, ${config_perfil || 'padrao'})
+      const [res] = await this.db`
+        INSERT INTO lab_system.setor(nome, config_perfil, sla_entrega_dias)
+        VALUES (${nome}, ${config_perfil || 'padrao'}, ${sla_entrega_dias || 4})
+        RETURNING *
       `;
+      return res;
     } catch (error) {
       if (error.message.includes("duplicate") && error.message.includes("key")) {
         throw new Error(`Setor "${nome}" já está cadastrado.`);
@@ -21,11 +23,19 @@ export default class SectorModel extends BaseModel {
 
   async search(nome) {
     const setor = await this.db`
-      SELECT id, nome, config_perfil
+      SELECT id, nome, config_perfil, sla_entrega_dias
       FROM lab_system.setor
       WHERE nome = ${nome}
     `;
-    return setor;
+    if (setor.length === 0) return null;
+
+    const slas = await this.db`
+      SELECT material_tipo, dias_sla
+      FROM lab_system.config_prazo
+      WHERE fk_cod_setor = ${setor[0].id}
+    `;
+
+    return { ...setor[0], slas };
   }
 
   async searchMateriaisInSetor(nome) {
@@ -39,12 +49,13 @@ export default class SectorModel extends BaseModel {
     return materiais;
   }
 
-  async edit(oldName, newName, config_perfil) {
+  async edit(oldName, { newName, config_perfil, sla_entrega_dias }) {
     await this.db`
       UPDATE lab_system.setor
       SET 
         nome = ${newName},
-        config_perfil = ${config_perfil || 'padrao'}
+        config_perfil = ${config_perfil || 'padrao'},
+        sla_entrega_dias = ${sla_entrega_dias || 4}
       WHERE nome = ${oldName}
     `;
   }
@@ -58,10 +69,32 @@ export default class SectorModel extends BaseModel {
 
   async readAll() {
     const setores = await this.db`
-      SELECT id, nome, config_perfil
+      SELECT id, nome, config_perfil, sla_entrega_dias
       FROM lab_system.setor
       ORDER BY nome ASC;
     `;
+
+    // Anexa os SLAs granulares para cada setor
+    for (let s of setores) {
+      s.slas = await this.db`
+        SELECT material_tipo, dias_sla
+        FROM lab_system.config_prazo
+        WHERE fk_cod_setor = ${s.id}
+      `;
+    }
+
     return setores;
+  }
+
+  async updateGranularSLAs(sectorId, slas) {
+    // slas: [{ material_tipo: 'BN', dias_sla: 4 }, ...]
+    for (const item of slas) {
+      await this.db`
+        INSERT INTO lab_system.config_prazo (fk_cod_setor, material_tipo, dias_sla)
+        VALUES (${sectorId}, ${item.material_tipo}, ${item.dias_sla})
+        ON CONFLICT (fk_cod_setor, material_tipo) 
+        DO UPDATE SET dias_sla = EXCLUDED.dias_sla
+      `;
+    }
   }
 }

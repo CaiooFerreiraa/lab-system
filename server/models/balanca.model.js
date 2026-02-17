@@ -5,12 +5,12 @@ export default class BalancaModel extends BaseModel {
     super(db);
   }
 
-  async register({ patrimonio, calibracao_externa, fk_cod_setor, status, diferenca_reprovacao }) {
+  async register({ patrimonio, calibracao_externa, fk_cod_setor, status, diferenca_reprovacao, observacoes }) {
     return await this.db`
       INSERT INTO lab_system.balanca (
-        patrimonio, calibracao_externa, fk_cod_setor, status, diferenca_reprovacao
+        patrimonio, calibracao_externa, fk_cod_setor, status, diferenca_reprovacao, observacoes
       ) VALUES (
-        ${patrimonio}, ${calibracao_externa}, ${fk_cod_setor}, ${status}, ${diferenca_reprovacao || null}
+        ${patrimonio}, ${calibracao_externa}, ${fk_cod_setor}, ${status}, ${diferenca_reprovacao || null}, ${observacoes || null}
       )
       RETURNING *
     `;
@@ -29,14 +29,15 @@ export default class BalancaModel extends BaseModel {
     return await this.db`DELETE FROM lab_system.balanca WHERE id = ${id}`;
   }
 
-  async edit({ id, patrimonio, calibracao_externa, fk_cod_setor, status, diferenca_reprovacao }) {
+  async edit({ id, patrimonio, calibracao_externa, fk_cod_setor, status, diferenca_reprovacao, observacoes }) {
     return await this.db`
       UPDATE lab_system.balanca
       SET patrimonio = ${patrimonio}, 
           calibracao_externa = ${calibracao_externa}, 
           fk_cod_setor = ${fk_cod_setor}, 
           status = ${status}, 
-          diferenca_reprovacao = ${diferenca_reprovacao || null}
+          diferenca_reprovacao = ${diferenca_reprovacao || null},
+          observacoes = ${observacoes || null}
       WHERE id = ${id}
     `;
   }

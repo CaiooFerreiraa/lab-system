@@ -1,4 +1,6 @@
-export default function PopUp({ msg, onClose }) {
+export default function PopUp({ show, msg, onClose }) {
+  if (!show) return null;
+
   return (
     <div className="popup-overlay" onClick={onClose}>
       <div className="popup-content" onClick={(e) => e.stopPropagation()}>

@@ -209,7 +209,12 @@ export default function DescolagemPage() {
               <div className="form-row" style={{ marginTop: '15px' }}>
                 <div className="form-group">
                   <label>Responsável pelo Upload *</label>
-                  <select value={fkFuncionario} onChange={(e) => setFkFuncionario(e.target.value)} required>
+                  <select
+                    value={fkFuncionario}
+                    onChange={(e) => setFkFuncionario(e.target.value)}
+                    required
+                    className="filter-input"
+                  >
                     <option value="">Quem está enviando?</option>
                     {employeeList.map(f => <option key={f.matricula} value={f.matricula}>{f.nome} {f.sobrenome}</option>)}
                   </select>

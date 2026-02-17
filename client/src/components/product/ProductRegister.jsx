@@ -21,10 +21,23 @@ export default function ProductRegister() {
 
   const [product, setProduct] = useState("");
   const [sector, setSector] = useState(user?.fk_cod_setor || "");
+  const [sectorList, setSectorList] = useState([]);
   const [type, setType] = useState("");
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadSectors = async () => {
+      try {
+        const res = await sectorApi.list();
+        setSectorList(res.data || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadSectors();
+  }, []);
 
   // Atualiza campo de setor automágicamente
   useEffect(() => {
@@ -88,6 +101,30 @@ export default function ProductRegister() {
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="sector">Setor *</label>
+              {(user?.role === 'admin' || user?.setor_nome?.toLowerCase() === 'laboratório') ? (
+                <select
+                  id="sector"
+                  value={sector}
+                  onChange={(e) => setSector(e.target.value)}
+                  required
+                >
+                  <option value="">Selecione o setor</option>
+                  {sectorList.map(s => (
+                    <option key={s.id} value={s.id}>{s.nome}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={user?.setor_nome || ""}
+                  readOnly
+                  style={{ background: "rgba(255,255,255,0.05)", fontWeight: "bold", color: "var(--accent-primary)" }}
+                />
+              )}
             </div>
 
             <div className="form-group">

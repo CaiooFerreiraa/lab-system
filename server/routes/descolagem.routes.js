@@ -35,9 +35,13 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
 });
 
+import { protect } from "../middlewares/auth.middleware.js";
+
 const router = Router();
 const repository = new DescolagemModel(db);
 const controller = new DescolagemController(repository);
+
+router.use(protect);
 
 router.post("/upload", upload.single("arquivo"), controller.upload);
 router.get("/read", controller.readAll);

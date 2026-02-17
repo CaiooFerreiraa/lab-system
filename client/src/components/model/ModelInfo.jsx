@@ -67,6 +67,24 @@ export default function ModelInfo() {
             <span className="info-label">Marca</span>
             <span className="info-value">{data.marca}</span>
           </div>
+          {data.msc_bn_nome && (
+            <div className="info-card">
+              <span className="info-label">MSC BN</span>
+              <span className="info-value">{data.msc_bn_nome}</span>
+            </div>
+          )}
+          {data.msc_dn_nome && (
+            <div className="info-card">
+              <span className="info-label">MSC DN</span>
+              <span className="info-value">{data.msc_dn_nome}</span>
+            </div>
+          )}
+          {data.msc_nome && !data.msc_bn_nome && !data.msc_dn_nome && (
+            <div className="info-card">
+              <span className="info-label">MSC (Geral)</span>
+              <span className="info-value">{data.msc_nome}</span>
+            </div>
+          )}
         </div>
 
         <section className="detail-section">
