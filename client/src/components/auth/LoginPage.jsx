@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { authApi } from "../../services/api";
+import Logo from "../common/Logo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -36,7 +37,7 @@ export default function LoginPage() {
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">
-            <span className="material-symbols-outlined login-logo-icon">biotech</span>
+            <Logo size={64} className="login-logo-svg" />
           </div>
           <h1 className="login-title">Lab System</h1>
           <p className="login-subtitle">Sistema de Gerenciamento Laboratorial</p>

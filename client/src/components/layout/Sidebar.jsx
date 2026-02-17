@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { getSectorPermissions } from "../../config/permissions";
+import Logo from "../common/Logo";
 
 const NAV_GROUPS = [
   {
@@ -128,7 +129,7 @@ export default function Sidebar() {
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <span className="material-symbols-outlined logo-icon">biotech</span>
+          <Logo size={collapsed ? 32 : 36} className="logo-icon" />
           {!collapsed && <h1 className="logo-text">Lab System</h1>}
         </div>
         <button
