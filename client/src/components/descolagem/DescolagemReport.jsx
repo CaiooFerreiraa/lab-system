@@ -54,7 +54,7 @@ export default function DescolagemReport() {
 
       {/* Summary Cards */}
       <div className="report-summary">
-        <div className="summary-card summary-card--primary">
+        <div className="summary-card summary-card--success">
           <div className="summary-card-data">
             <span className="summary-card-number">{summary.total}</span>
             <span className="summary-card-label">Total Laudos</span>
@@ -92,19 +92,25 @@ export default function DescolagemReport() {
           position: 'relative',
           boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
         }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#22c55e' }}></div>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#16a34a' }}></div>
           <h3 style={{ marginBottom: '24px', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span className="material-symbols-outlined" style={{ color: '#22c55e' }}>group</span>
+            <span className="material-symbols-outlined" style={{ color: '#16a34a' }}>group</span>
             Performance por Líder
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartDataLider.slice(0, 8)}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-              <YAxis stroke="var(--text-muted)" fontSize={11} />
-              <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '12px' }} />
-              <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" stackId="a" />
-              <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" stackId="a" />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                contentStyle={{ background: 'rgba(18, 20, 30, 0.95)', backdropFilter: 'blur(12px)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', padding: '12px 16px' }}
+                itemStyle={{ color: '#e2e8f0', fontSize: '13px' }}
+                labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '12px' }} />
+              <Bar dataKey="aprovados" name="Aprovados" fill="#16a34a" stackId="a" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="reprovados" name="Reprovados" fill="hsl(0, 75%, 55%)" stackId="a" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -118,19 +124,25 @@ export default function DescolagemReport() {
           position: 'relative',
           boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
         }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#3b82f6' }}></div>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-success)' }}></div>
           <h3 style={{ marginBottom: '24px', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span className="material-symbols-outlined" style={{ color: '#3b82f6' }}>badge</span>
+            <span className="material-symbols-outlined" style={{ color: 'var(--accent-success)' }}>badge</span>
             Performance por Coordenador
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartDataCoordenador.slice(0, 8)}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-              <YAxis stroke="var(--text-muted)" fontSize={11} />
-              <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '12px' }} />
-              <Bar dataKey="aprovados" name="Aprovados" fill="#3b82f6" stackId="a" />
-              <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" stackId="a" />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                contentStyle={{ background: 'rgba(18, 20, 30, 0.95)', backdropFilter: 'blur(12px)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', padding: '12px 16px' }}
+                itemStyle={{ color: '#e2e8f0', fontSize: '13px' }}
+                labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '12px' }} />
+              <Bar dataKey="aprovados" name="Aprovados" fill="#16a34a" stackId="a" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="reprovados" name="Reprovados" fill="hsl(0, 75%, 55%)" stackId="a" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -143,19 +155,25 @@ export default function DescolagemReport() {
           border: '1px solid var(--border-color)',
           position: 'relative'
         }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-primary)' }}></div>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-success)' }}></div>
           <h3 style={{ marginBottom: '24px', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)' }}>conveyor_belt</span>
+            <span className="material-symbols-outlined" style={{ color: 'var(--accent-success)' }}>conveyor_belt</span>
             Performance por Esteira
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartDataEsteira.slice(0, 8)}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-              <YAxis stroke="var(--text-muted)" fontSize={11} />
-              <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '12px' }} />
-              <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                contentStyle={{ background: 'rgba(18, 20, 30, 0.95)', backdropFilter: 'blur(12px)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', padding: '12px 16px' }}
+                itemStyle={{ color: '#e2e8f0', fontSize: '13px' }}
+                labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '12px' }} />
+              <Bar dataKey="aprovados" name="Aprovados" fill="#16a34a" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="reprovados" name="Reprovados" fill="hsl(0, 75%, 55%)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -166,11 +184,17 @@ export default function DescolagemReport() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartDataBrand.slice(0, 6)}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
-              <YAxis stroke="var(--text-muted)" fontSize={11} />
-              <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '12px' }} />
-              <Bar dataKey="aprovados" name="Aprovados" fill="#8b5cf6" stackId="a" />
-              <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" stackId="a" />
+              <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                contentStyle={{ background: 'rgba(18, 20, 30, 0.95)', backdropFilter: 'blur(12px)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', padding: '12px 16px' }}
+                itemStyle={{ color: '#e2e8f0', fontSize: '13px' }}
+                labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '12px' }} />
+              <Bar dataKey="aprovados" name="Aprovados" fill="#16a34a" stackId="a" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="reprovados" name="Reprovados" fill="hsl(0, 75%, 55%)" stackId="a" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -241,7 +265,7 @@ export default function DescolagemReport() {
                       <td>{row.aprovados}</td>
                       <td>
                         <div className="mini-bar">
-                          <div className="mini-bar-fill" style={{ width: `${row.taxa_aprovacao}%`, background: row.taxa_aprovacao > 80 ? 'var(--accent-success)' : 'var(--accent-primary)' }}></div>
+                          <div className="mini-bar-fill" style={{ width: `${row.taxa_aprovacao}%`, background: row.taxa_aprovacao > 80 ? 'var(--accent-success)' : 'var(--accent-success)' }}></div>
                         </div>
                         {row.taxa_aprovacao}%
                       </td>
@@ -270,7 +294,7 @@ export default function DescolagemReport() {
                       <td>{row.aprovados}</td>
                       <td>
                         <div className="mini-bar">
-                          <div className="mini-bar-fill" style={{ width: `${row.taxa_aprovacao}%`, background: row.taxa_aprovacao > 80 ? 'var(--accent-success)' : 'var(--accent-primary)' }}></div>
+                          <div className="mini-bar-fill" style={{ width: `${row.taxa_aprovacao}%`, background: row.taxa_aprovacao > 80 ? 'var(--accent-success)' : 'var(--accent-success)' }}></div>
                         </div>
                         {row.taxa_aprovacao}%
                       </td>

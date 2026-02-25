@@ -7,6 +7,7 @@ Este arquivo fornece um contexto técnico detalhado para IAs trabalharem no proj
 - **Backend**: Node.js, Express, ES Modules.
 - **Banco de Dados**: PostgreSQL (Neon Database) com o driver `@neondatabase/serverless`.
 - **Autenticação**: JWT (`jsonwebtoken`) + bcrypt (`bcryptjs`).
+- **Automação**: `node-cron` para tarefas agendadas e `nodemailer` para notificações por e-mail.
 - **Infraestrutura**: Deploy no Render (Backend) e Vercel (Frontend).
 
 ## 📁 Arquitetura do Sistema
@@ -109,35 +110,54 @@ Ficam em `/migrations/` no formato `NNN_descricao.sql`. Rodar no SQL Editor do N
 
 ### Tabelas Adicionais
 
-#### `lab_system.modelo`
-- `cod_modelo` (serial PK)
-- `nome` (varchar)
-- `tipo` (varchar)
-- `cod_marca` (FK -> `marca`)
-- `fk_msc_id` (FK -> `msc` - Legado)
-- `fk_msc_id_bn` (FK -> `msc` - Novo)
-- `fk_msc_id_dn` (FK -> `msc` - Novo)
+### 📋 Sistema de Laudos (Agrupamento de Testes)
+- Testes individuais agora são obrigatoriamente vinculados a um **Laudo** (`lab_system.laudo`).
+- **Finalidade**: Agrupar múltiplos ensaios para um mesmo calçado/material, centralizando metadados (modelo, material, setor requisitante).
+- **Controle de Fluxo**:
+  1. **Pendente**: Criado pelo requisitante.
+  2. **Recebido**: Laboratório confirma recebimento físico (inicia contagem de SLA).
+  3. **Em Andamento**: Testes sendo executados.
+  4. **Concluído**: Todos os testes finalizados.
+  5. **Auto-Avaliação**: O sistema avalia o laudo como 'Aprovado' ou 'Reprovado' com base nos resultados individuais.
 
-#### `lab_system.descolagem`
-- Armazena metadados extraídos de laudos técnicos (PDF).
-- Vinculada ao `laudo` (FK `fk_laudo_id`).
-- Campos extraídos: `adesivo`, `adesivo_fornecedor`, `valor_media`, `esteira`, etc.
+### ⏱️ Gestão de SLA e Prazos
+- O prazo de entrega (`data_prazo`) é calculado no momento que o laudo é marcado como **Recebido**.
+- **Regra de Dias Úteis**: A contagem ignora domingos (trabalho considerado de Segunda a Sábado).
+- **Prioridade Granular**: O sistema permite configurar SLAs específicos por combinação de Setor e Tipo de Material (`lab_system.config_prazo`).
 
-### Regras de Negócio Importantes
-1. **Registro de Testes**: Se `fk_material` não for fornecido, o sistema aplica um fallback:
-   - Modo Descolagem: Usa o `numero_pedido` ou gera um ID único prefixado.
-   - Outros: Usa a constante "AVULSO".
-2. **Navegação pós-sucesso**: No `TestRegister.jsx`, o redirecionamento automático é desativado após o sucesso para permitir a visualização do card de resultados.
-3. **Persistência de Setor**: O campo `fk_cod_setor` em `teste` e `material` é obrigatório (`NOT NULL`).
+### ⚙️ Performance de Máquinas e Equipamentos
+- Cadastro de máquinas (`lab_system.maquina`) vinculadas a setores.
+- **Configuração de Tempo**: Cadastro de tempos estimados (`tempo_estimado_segundos`) por tipo de teste para cada máquina.
+- **Métricas de Produtividade**:
+  - Registro de `tempo_real_segundos` em cada teste concluído.
+  - Relatórios comparando Tempo Real vs. Estimado.
+  - Taxa de utilização e eficiência por equipamento.
 
+### 🔔 Automação e Notificações
+- **Serviço de Automação**: Localizado em `server/utils/automation.js`, utiliza `node-cron`.
+- **Relatório Diário**: Enviado automaticamente às 09:00 com o resumo de laudos do dia anterior/atual.
+- **Alertas de Atraso**: O sistema verifica periodicamente testes que excederam o tempo estimado em 50% e envia alertas por e-mail para os responsáveis configurados.
+- **Configuração**: Tabela `lab_system.notificacao_email` define quem recebe qual tipo de alerta.
+
+### 🧪 Expansão da Descolagem (Peeling)
+- Tabela `lab_system.descolagem` agora armazena metadados avançados (lado do calçado, adesivo, fornecedor, esteira, etc).
+- **Prioridade Peeling**: Marcador de prioridade para testes de desenvolvimento acelerado.
+- **Visualização**: Suporte para PDF Viewer de laudos e gráficos side-by-side no frontend.
+
+## 💾 Schema do Banco de Dados (Lab System)
+Abaixo está o DDL completo do banco de dados para referência de tipos, tabelas e relacionamentos:
+
+```sql
 CREATE SCHEMA "neon_auth";
 CREATE SCHEMA "lab_system";
-CREATE TYPE "lab_system"."tipo_enum" AS ENUM('DUREZA', 'DENSIDADE', 'RESILIENCIA', 'ENCOLHIMENTO', 'COMPRESSION SET', 'RASGAMENTO', 'ALONGAMENTO_TRACAO', 'ABRASAO DIN', 'ABRASAO AKRON', 'MODULO 300%', 'TEOR DE GEIS', 'TEOR DE UMIDADE_DE_SILICA', 'UMIDADE DE EVA', 'VOLUME DE GAS', 'BLOOMING', 'ENVELHECIMENTO', 'HIDROLISE', 'DESCOLAGEM', 'RESISTENCIA A LAVAGEM');
+
+CREATE TYPE "lab_system"."tipo_enum" AS ENUM('DUREZA', 'DENSIDADE', 'RESILIENCIA', 'ENCOLHIMENTO', 'COMPRESSION SET', 'RASGAMENTO', 'ALONGAMENTO_TRACAO', 'ABRASAO DIN', 'ABRASAO AKRON', 'MODULO 300%', 'TEOR DE GEIS', 'TEOR DE UMIDADE_DE_SILICA', 'UMIDADE DE EVA', 'VOLUME DE GAS', 'BLOOMING', 'ENVELHECIMENTO', 'HIDROLISE', 'DESCOLAGEM', 'RESISTENCIA A LAVAGEM', 'ALONGAMENTO', 'TRACAO');
 CREATE TYPE "lab_system"."modelo_tipo" AS ENUM('Casual', 'Esportivo', 'Alta Performance');
 CREATE TYPE "lab_system"."turno_enum" AS ENUM('Turno A', 'Turno B', 'Turno C');
 CREATE TYPE "lab_system"."type_material" AS ENUM('BN', 'DN', 'Base');
-CREATE TYPE "lab_system"."status_enum" AS ENUM('Concluído', 'Pendente', 'Em Andamento', 'Aprovado', 'Reprovado');
+CREATE TYPE "lab_system"."status_enum" AS ENUM('Concluído', 'Pendente', 'Em Andamento', 'Aprovado', 'Reprovado', 'Recebido');
 CREATE TYPE "lab_system"."setor_enum" AS ENUM('Borracha', 'Injetado', 'Protótipo', 'Almoxarifado', 'Pré-Fabricado', 'Químico');
+
 CREATE TABLE "neon_auth"."account" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"accountId" text NOT NULL,
@@ -153,6 +173,7 @@ CREATE TABLE "neon_auth"."account" (
 	"createdAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"updatedAt" timestamp with time zone NOT NULL
 );
+
 CREATE TABLE "neon_auth"."invitation" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"organizationId" uuid NOT NULL,
@@ -163,6 +184,7 @@ CREATE TABLE "neon_auth"."invitation" (
 	"createdAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"inviterId" uuid NOT NULL
 );
+
 CREATE TABLE "neon_auth"."jwks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"publicKey" text NOT NULL,
@@ -170,6 +192,7 @@ CREATE TABLE "neon_auth"."jwks" (
 	"createdAt" timestamp with time zone NOT NULL,
 	"expiresAt" timestamp with time zone
 );
+
 CREATE TABLE "neon_auth"."member" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"organizationId" uuid NOT NULL,
@@ -177,6 +200,7 @@ CREATE TABLE "neon_auth"."member" (
 	"role" text NOT NULL,
 	"createdAt" timestamp with time zone NOT NULL
 );
+
 CREATE TABLE "neon_auth"."organization" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"name" text NOT NULL,
@@ -185,6 +209,7 @@ CREATE TABLE "neon_auth"."organization" (
 	"createdAt" timestamp with time zone NOT NULL,
 	"metadata" text
 );
+
 CREATE TABLE "neon_auth"."project_config" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"name" text NOT NULL,
@@ -197,6 +222,7 @@ CREATE TABLE "neon_auth"."project_config" (
 	"email_and_password" jsonb,
 	"allow_localhost" boolean NOT NULL
 );
+
 CREATE TABLE "neon_auth"."session" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"expiresAt" timestamp with time zone NOT NULL,
@@ -209,6 +235,7 @@ CREATE TABLE "neon_auth"."session" (
 	"impersonatedBy" text,
 	"activeOrganizationId" text
 );
+
 CREATE TABLE "neon_auth"."user" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"name" text NOT NULL,
@@ -222,6 +249,7 @@ CREATE TABLE "neon_auth"."user" (
 	"banReason" text,
 	"banExpires" timestamp with time zone
 );
+
 CREATE TABLE "neon_auth"."verification" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"identifier" text NOT NULL,
@@ -230,6 +258,7 @@ CREATE TABLE "neon_auth"."verification" (
 	"createdAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	"updatedAt" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
 CREATE TABLE "lab_system"."balanca" (
 	"id" serial PRIMARY KEY,
 	"patrimonio" varchar(50) NOT NULL CONSTRAINT "balanca_patrimonio_key" UNIQUE,
@@ -238,8 +267,24 @@ CREATE TABLE "lab_system"."balanca" (
 	"status" varchar(20),
 	"diferenca_reprovacao" numeric,
 	"data_criacao" timestamp DEFAULT CURRENT_TIMESTAMP,
-	CONSTRAINT "balanca_status_check" CHECK (CHECK (((status)::text = ANY ((ARRAY['Aprovado'::character varying, 'Reprovado'::character varying])::text[]))))
+	"observacoes" text,
+	CONSTRAINT "balanca_status_check" CHECK (((status)::text = ANY ((ARRAY['Aprovado'::character varying, 'Reprovado'::character varying])::text[])))
 );
+
+CREATE TABLE "lab_system"."config_prazo" (
+	"id" serial PRIMARY KEY,
+	"fk_cod_setor" integer NOT NULL,
+	"material_tipo" "lab_system"."type_material" NOT NULL,
+	"dias_sla" integer DEFAULT 4 NOT NULL,
+	CONSTRAINT "config_prazo_fk_cod_setor_material_tipo_key" UNIQUE("fk_cod_setor","material_tipo")
+);
+
+CREATE TABLE "lab_system"."configuracao" (
+	"id" varchar(50) PRIMARY KEY,
+	"valor" jsonb NOT NULL,
+	"data_atualizacao" timestamp DEFAULT now()
+);
+
 CREATE TABLE "lab_system"."descolagem" (
 	"id" serial PRIMARY KEY,
 	"titulo" varchar(200),
@@ -269,8 +314,10 @@ CREATE TABLE "lab_system"."descolagem" (
 	"valor_maximo" numeric,
 	"status_final" "lab_system"."status_enum",
 	"realizado_por" varchar(100),
-	"fk_laudo_id" integer
+	"fk_laudo_id" integer,
+	"prioridade" boolean DEFAULT false
 );
+
 CREATE TABLE "lab_system"."especificacao" (
 	"cod_especificacao" serial PRIMARY KEY,
 	"cod_modelo" integer NOT NULL,
@@ -278,6 +325,7 @@ CREATE TABLE "lab_system"."especificacao" (
 	"valor_especificacao" numeric,
 	"valor_variacao" numeric
 );
+
 CREATE TABLE "lab_system"."funcionario" (
 	"turno" "lab_system"."turno_enum",
 	"nome" varchar(50),
@@ -285,6 +333,7 @@ CREATE TABLE "lab_system"."funcionario" (
 	"matricula" varchar(50) PRIMARY KEY,
 	"fk_cod_setor" integer
 );
+
 CREATE TABLE "lab_system"."laudo" (
 	"id" serial PRIMARY KEY,
 	"fk_funcionario_matricula" varchar(50),
@@ -294,29 +343,37 @@ CREATE TABLE "lab_system"."laudo" (
 	"status_geral" varchar(20) DEFAULT 'Pendente',
 	"observacoes" text,
 	"data_criacao" timestamp DEFAULT CURRENT_TIMESTAMP,
-	"codigo_laudo" varchar(20) CONSTRAINT "laudo_codigo_laudo_key" UNIQUE
+	"codigo_laudo" varchar(20) CONSTRAINT "laudo_codigo_laudo_key" UNIQUE,
+	"numero_pedido" varchar(50),
+	"data_recebimento" timestamp,
+	"data_prazo" timestamp
 );
+
 CREATE TABLE "lab_system"."local" (
 	"cod_local" serial PRIMARY KEY,
 	"prateleira" varchar(10),
 	"caixa" varchar(10),
 	"fileira" varchar(10)
 );
+
 CREATE TABLE "lab_system"."marca" (
 	"cod_marca" serial PRIMARY KEY,
 	"nome" varchar(30) CONSTRAINT "marca_nome_key" UNIQUE
 );
+
 CREATE TABLE "lab_system"."material" (
 	"tipo" "lab_system"."type_material",
 	"referencia" varchar(10) PRIMARY KEY,
 	"cod_setor" integer NOT NULL
 );
+
 CREATE TABLE "lab_system"."metodo" (
 	"cod_metodo" serial PRIMARY KEY,
 	"descricao" text,
 	"nome" varchar(30),
 	"cod_marca" integer
 );
+
 CREATE TABLE "lab_system"."modelo" (
 	"cod_modelo" serial PRIMARY KEY,
 	"nome" varchar(30) CONSTRAINT "modelo_nome_key" UNIQUE,
@@ -326,6 +383,7 @@ CREATE TABLE "lab_system"."modelo" (
 	"fk_msc_id_bn" integer,
 	"fk_msc_id_dn" integer
 );
+
 CREATE TABLE "lab_system"."msc" (
 	"id" serial PRIMARY KEY,
 	"nome" varchar(100) NOT NULL CONSTRAINT "msc_nome_key" UNIQUE,
@@ -333,6 +391,7 @@ CREATE TABLE "lab_system"."msc" (
 	"data_criacao" timestamp DEFAULT now(),
 	"tipo" varchar(20) DEFAULT 'DN'
 );
+
 CREATE TABLE "lab_system"."msc_especificacao" (
 	"id" serial PRIMARY KEY,
 	"fk_msc_id" integer,
@@ -343,17 +402,29 @@ CREATE TABLE "lab_system"."msc_especificacao" (
 	"v_min" numeric,
 	"v_max" numeric
 );
+
+CREATE TABLE "lab_system"."opcoes_producao" (
+	"id" serial PRIMARY KEY,
+	"categoria" varchar(50) NOT NULL UNIQUE,
+	"valor" varchar(255) NOT NULL UNIQUE,
+	"data_criacao" timestamp DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT "opcoes_producao_categoria_valor_key" UNIQUE("categoria","valor")
+);
+
 CREATE TABLE "lab_system"."setor" (
 	"id" serial PRIMARY KEY,
 	"nome" varchar(30) CONSTRAINT "setor_nome_key" UNIQUE,
 	"tipo_padrao" "lab_system"."setor_enum",
-	"config_perfil" varchar(50) DEFAULT 'padrao'
+	"config_perfil" varchar(50) DEFAULT 'padrao',
+	"sla_entrega_dias" integer DEFAULT 4
 );
+
 CREATE TABLE "lab_system"."telefone" (
 	"id" serial PRIMARY KEY,
 	"telefone" varchar(16),
 	"fk_funcionario_matricula" varchar(50)
 );
+
 CREATE TABLE "lab_system"."teste" (
 	"cod_teste" serial PRIMARY KEY,
 	"status" "lab_system"."status_enum" DEFAULT 'Pendente'::"lab_system"."status_enum",
@@ -369,10 +440,12 @@ CREATE TABLE "lab_system"."teste" (
 	"fk_material" varchar(10) NOT NULL,
 	"fk_laudo_id" integer
 );
+
 CREATE TABLE "lab_system"."tipo" (
 	"cod_tipo" serial PRIMARY KEY,
 	"nome" "lab_system"."tipo_enum" CONSTRAINT "tipo_nome_key" UNIQUE
 );
+
 CREATE TABLE "lab_system"."usuario" (
 	"id" serial PRIMARY KEY,
 	"email" varchar(100) NOT NULL CONSTRAINT "usuario_email_key" UNIQUE,
@@ -382,87 +455,8 @@ CREATE TABLE "lab_system"."usuario" (
 	"data_criacao" timestamp DEFAULT now(),
 	"fk_cod_setor" integer
 );
-ALTER TABLE "neon_auth"."account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "neon_auth"."user"("id") ON DELETE CASCADE;
-ALTER TABLE "neon_auth"."invitation" ADD CONSTRAINT "invitation_inviterId_fkey" FOREIGN KEY ("inviterId") REFERENCES "neon_auth"."user"("id") ON DELETE CASCADE;
-ALTER TABLE "neon_auth"."invitation" ADD CONSTRAINT "invitation_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "neon_auth"."organization"("id") ON DELETE CASCADE;
-ALTER TABLE "neon_auth"."member" ADD CONSTRAINT "member_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "neon_auth"."organization"("id") ON DELETE CASCADE;
-ALTER TABLE "neon_auth"."member" ADD CONSTRAINT "member_userId_fkey" FOREIGN KEY ("userId") REFERENCES "neon_auth"."user"("id") ON DELETE CASCADE;
-ALTER TABLE "neon_auth"."session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "neon_auth"."user"("id") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."balanca" ADD CONSTRAINT "balanca_fk_cod_setor_fkey" FOREIGN KEY ("fk_cod_setor") REFERENCES "lab_system"."setor"("id");
-ALTER TABLE "lab_system"."descolagem" ADD CONSTRAINT "descolagem_fk_funcionario" FOREIGN KEY ("fk_funcionario_matricula") REFERENCES "lab_system"."funcionario"("matricula") ON DELETE SET NULL;
-ALTER TABLE "lab_system"."descolagem" ADD CONSTRAINT "descolagem_fk_laudo_id_fkey" FOREIGN KEY ("fk_laudo_id") REFERENCES "lab_system"."laudo"("id") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."descolagem" ADD CONSTRAINT "descolagem_fk_modelo" FOREIGN KEY ("fk_modelo_cod_modelo") REFERENCES "lab_system"."modelo"("cod_modelo") ON DELETE SET NULL;
-ALTER TABLE "lab_system"."descolagem" ADD CONSTRAINT "descolagem_fk_setor" FOREIGN KEY ("fk_cod_setor") REFERENCES "lab_system"."setor"("id") ON DELETE SET NULL;
-ALTER TABLE "lab_system"."especificacao" ADD CONSTRAINT "f_cod_modelo" FOREIGN KEY ("cod_modelo") REFERENCES "lab_system"."modelo"("cod_modelo") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."funcionario" ADD CONSTRAINT "funcionario_fk_setor" FOREIGN KEY ("fk_cod_setor") REFERENCES "lab_system"."setor"("id") ON DELETE SET NULL;
-ALTER TABLE "lab_system"."laudo" ADD CONSTRAINT "laudo_fk_cod_setor_fkey" FOREIGN KEY ("fk_cod_setor") REFERENCES "lab_system"."setor"("id");
-ALTER TABLE "lab_system"."laudo" ADD CONSTRAINT "laudo_fk_funcionario_matricula_fkey" FOREIGN KEY ("fk_funcionario_matricula") REFERENCES "lab_system"."funcionario"("matricula");
-ALTER TABLE "lab_system"."laudo" ADD CONSTRAINT "laudo_fk_modelo_cod_modelo_fkey" FOREIGN KEY ("fk_modelo_cod_modelo") REFERENCES "lab_system"."modelo"("cod_modelo");
-ALTER TABLE "lab_system"."material" ADD CONSTRAINT "cod_setor" FOREIGN KEY ("cod_setor") REFERENCES "lab_system"."setor"("id") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."metodo" ADD CONSTRAINT "cod_marca" FOREIGN KEY ("cod_marca") REFERENCES "lab_system"."marca"("cod_marca") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."modelo" ADD CONSTRAINT "cod_marca" FOREIGN KEY ("cod_marca") REFERENCES "lab_system"."marca"("cod_marca") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."modelo" ADD CONSTRAINT "modelo_fk_msc_id_bn_fkey" FOREIGN KEY ("fk_msc_id_bn") REFERENCES "lab_system"."msc"("id");
-ALTER TABLE "lab_system"."modelo" ADD CONSTRAINT "modelo_fk_msc_id_dn_fkey" FOREIGN KEY ("fk_msc_id_dn") REFERENCES "lab_system"."msc"("id");
-ALTER TABLE "lab_system"."modelo" ADD CONSTRAINT "modelo_fk_msc_id_fkey" FOREIGN KEY ("fk_msc_id") REFERENCES "lab_system"."msc"("id");
-ALTER TABLE "lab_system"."msc_especificacao" ADD CONSTRAINT "msc_especificacao_fk_msc_id_fkey" FOREIGN KEY ("fk_msc_id") REFERENCES "lab_system"."msc"("id") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."telefone" ADD CONSTRAINT "telefone_fk_funcionario" FOREIGN KEY ("fk_funcionario_matricula") REFERENCES "lab_system"."funcionario"("matricula") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."teste" ADD CONSTRAINT "fk_cod_espec" FOREIGN KEY ("fk_cod_espec") REFERENCES "lab_system"."especificacao"("cod_especificacao");
-ALTER TABLE "lab_system"."teste" ADD CONSTRAINT "fk_cod_setor" FOREIGN KEY ("fk_cod_setor") REFERENCES "lab_system"."setor"("id");
-ALTER TABLE "lab_system"."teste" ADD CONSTRAINT "fk_material" FOREIGN KEY ("fk_material") REFERENCES "lab_system"."material"("referencia");
-ALTER TABLE "lab_system"."teste" ADD CONSTRAINT "teste_fk_funcionario_matricula_fkey" FOREIGN KEY ("fk_funcionario_matricula") REFERENCES "lab_system"."funcionario"("matricula") ON DELETE RESTRICT;
-ALTER TABLE "lab_system"."teste" ADD CONSTRAINT "teste_fk_laudo_id_fkey" FOREIGN KEY ("fk_laudo_id") REFERENCES "lab_system"."laudo"("id") ON DELETE CASCADE;
-ALTER TABLE "lab_system"."teste" ADD CONSTRAINT "teste_fk_local_cod_local_fkey" FOREIGN KEY ("fk_local_cod_local") REFERENCES "lab_system"."local"("cod_local") ON DELETE RESTRICT;
-ALTER TABLE "lab_system"."teste" ADD CONSTRAINT "teste_fk_modelo_cod_modelo_fkey" FOREIGN KEY ("fk_modelo_cod_modelo") REFERENCES "lab_system"."modelo"("cod_modelo") ON DELETE RESTRICT;
-ALTER TABLE "lab_system"."teste" ADD CONSTRAINT "teste_fk_tipo_cod_tipo_fkey" FOREIGN KEY ("fk_tipo_cod_tipo") REFERENCES "lab_system"."tipo"("cod_tipo") ON DELETE RESTRICT;
-ALTER TABLE "lab_system"."usuario" ADD CONSTRAINT "usuario_fk_funcionario" FOREIGN KEY ("fk_funcionario_matricula") REFERENCES "lab_system"."funcionario"("matricula") ON DELETE SET NULL;
-ALTER TABLE "lab_system"."usuario" ADD CONSTRAINT "usuario_fk_setor" FOREIGN KEY ("fk_cod_setor") REFERENCES "lab_system"."setor"("id") ON DELETE SET NULL;
-CREATE UNIQUE INDEX "account_pkey" ON "neon_auth"."account" ("id");
-CREATE INDEX "account_userId_idx" ON "neon_auth"."account" ("userId");
-CREATE INDEX "invitation_email_idx" ON "neon_auth"."invitation" ("email");
-CREATE INDEX "invitation_organizationId_idx" ON "neon_auth"."invitation" ("organizationId");
-CREATE UNIQUE INDEX "invitation_pkey" ON "neon_auth"."invitation" ("id");
-CREATE UNIQUE INDEX "jwks_pkey" ON "neon_auth"."jwks" ("id");
-CREATE INDEX "member_organizationId_idx" ON "neon_auth"."member" ("organizationId");
-CREATE UNIQUE INDEX "member_pkey" ON "neon_auth"."member" ("id");
-CREATE INDEX "member_userId_idx" ON "neon_auth"."member" ("userId");
-CREATE UNIQUE INDEX "organization_pkey" ON "neon_auth"."organization" ("id");
-CREATE UNIQUE INDEX "organization_slug_key" ON "neon_auth"."organization" ("slug");
-CREATE UNIQUE INDEX "organization_slug_uidx" ON "neon_auth"."organization" ("slug");
-CREATE UNIQUE INDEX "project_config_endpoint_id_key" ON "neon_auth"."project_config" ("endpoint_id");
-CREATE UNIQUE INDEX "project_config_pkey" ON "neon_auth"."project_config" ("id");
-CREATE UNIQUE INDEX "session_pkey" ON "neon_auth"."session" ("id");
-CREATE UNIQUE INDEX "session_token_key" ON "neon_auth"."session" ("token");
-CREATE INDEX "session_userId_idx" ON "neon_auth"."session" ("userId");
-CREATE UNIQUE INDEX "user_email_key" ON "neon_auth"."user" ("email");
-CREATE UNIQUE INDEX "user_pkey" ON "neon_auth"."user" ("id");
-CREATE INDEX "verification_identifier_idx" ON "neon_auth"."verification" ("identifier");
-CREATE UNIQUE INDEX "verification_pkey" ON "neon_auth"."verification" ("id");
-CREATE UNIQUE INDEX "balanca_patrimonio_key" ON "lab_system"."balanca" ("patrimonio");
-CREATE UNIQUE INDEX "balanca_pkey" ON "lab_system"."balanca" ("id");
-CREATE UNIQUE INDEX "descolagem_pkey" ON "lab_system"."descolagem" ("id");
-CREATE INDEX "idx_descolagem_laudo" ON "lab_system"."descolagem" ("fk_laudo_id");
-CREATE UNIQUE INDEX "especificacao_pkey" ON "lab_system"."especificacao" ("cod_especificacao");
-CREATE UNIQUE INDEX "funcionario_pkey" ON "lab_system"."funcionario" ("matricula");
-CREATE INDEX "idx_funcionario_setor" ON "lab_system"."funcionario" ("fk_cod_setor");
-CREATE UNIQUE INDEX "laudo_codigo_laudo_key" ON "lab_system"."laudo" ("codigo_laudo");
-CREATE UNIQUE INDEX "laudo_pkey" ON "lab_system"."laudo" ("id");
-CREATE UNIQUE INDEX "local_pkey" ON "lab_system"."local" ("cod_local");
-CREATE UNIQUE INDEX "marca_nome_key" ON "lab_system"."marca" ("nome");
-CREATE UNIQUE INDEX "marca_pkey" ON "lab_system"."marca" ("cod_marca");
-CREATE UNIQUE INDEX "material_pkey" ON "lab_system"."material" ("referencia");
-CREATE UNIQUE INDEX "metodo_pkey" ON "lab_system"."metodo" ("cod_metodo");
-CREATE UNIQUE INDEX "modelo_nome_key" ON "lab_system"."modelo" ("nome");
-CREATE UNIQUE INDEX "modelo_pkey" ON "lab_system"."modelo" ("cod_modelo");
-CREATE UNIQUE INDEX "msc_nome_key" ON "lab_system"."msc" ("nome");
-CREATE UNIQUE INDEX "msc_pkey" ON "lab_system"."msc" ("id");
-CREATE UNIQUE INDEX "msc_especificacao_pkey" ON "lab_system"."msc_especificacao" ("id");
-CREATE UNIQUE INDEX "setor_nome_key" ON "lab_system"."setor" ("nome");
-CREATE UNIQUE INDEX "setor_pkey" ON "lab_system"."setor" ("id");
-CREATE UNIQUE INDEX "telefone_pkey" ON "lab_system"."telefone" ("id");
-CREATE UNIQUE INDEX "teste_pkey" ON "lab_system"."teste" ("cod_teste");
-CREATE UNIQUE INDEX "tipo_nome_key" ON "lab_system"."tipo" ("nome");
-CREATE UNIQUE INDEX "tipo_pkey" ON "lab_system"."tipo" ("cod_tipo");
-CREATE INDEX "idx_usuario_email" ON "lab_system"."usuario" ("email");
-CREATE INDEX "idx_usuario_setor" ON "lab_system"."usuario" ("fk_cod_setor");
-CREATE UNIQUE INDEX "usuario_email_key" ON "lab_system"."usuario" ("email");
-CREATE UNIQUE INDEX "usuario_pkey" ON "lab_system"."usuario" ("id");
+
+-- Indexações e Constraints de Foreign Key omitidas no bloco principal por brevidade, 
+-- mas seguem as PKs e UNIQUEs definidas acima.
+```
+

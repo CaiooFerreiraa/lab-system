@@ -1,4 +1,5 @@
 import { asyncHandler } from "../middlewares/error-handler.js";
+import { isLabOrAdmin } from "../middlewares/auth.middleware.js";
 
 export default class TestController {
   constructor(repository) {
@@ -36,13 +37,30 @@ export default class TestController {
     res.status(201).json({ success: true, message: "Teste cadastrado!", data: result });
   });
 
-  readAllLaudos = asyncHandler(async (_req, res) => {
-    const data = await this.repository.readAllLaudos();
+  readAllLaudos = asyncHandler(async (req, res) => {
+    const user = req.user;
+
+    // Laboratório e Admin vêem todos os laudos (fk_cod_setor = null = sem filtro)
+    // Todos os outros setores vêem APENAS os laudos do seu próprio setor
+    const labAdmin = isLabOrAdmin(user);
+    const fk_cod_setor = labAdmin ? null : (user?.fk_cod_setor || null);
+
+    const data = await this.repository.readAllLaudos({ fk_cod_setor });
     res.json({ success: true, data });
   });
 
   getLaudo = asyncHandler(async (req, res) => {
     const data = await this.repository.getLaudo(req.params.id);
+
+    if (!data) return res.status(404).json({ success: false, message: "Laudo não encontrado." });
+
+    const user = req.user;
+
+    // Bloqueia acesso a laudos de outros setores (exceto lab/admin)
+    if (!isLabOrAdmin(user) && user?.fk_cod_setor && String(data.fk_cod_setor) !== String(user.fk_cod_setor)) {
+      return res.status(403).json({ success: false, message: "Sem permissão para visualizar laudos de outros setores." });
+    }
+
     res.json({ success: true, data });
   });
 
@@ -59,6 +77,11 @@ export default class TestController {
   });
 
   edit = asyncHandler(async (req, res) => {
+    // Apenas laboratório e admin podem alterar resultado de um teste
+    if (!isLabOrAdmin(req.user)) {
+      return res.status(403).json({ success: false, message: "Apenas o Laboratório pode alterar resultados de testes." });
+    }
+
     await this.repository.edit(req.body);
     res.json({ success: true, message: "Atualizado com sucesso." });
   });
@@ -81,7 +104,17 @@ export default class TestController {
 
   editLaudo = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    await this.repository.editLaudo(id, req.body);
+    const body = req.body;
+
+    // Campos que apenas laboratório/admin podem alterar
+    const restrictedFields = ['status_geral', 'fk_cod_setor'];
+    const hasRestrictedField = restrictedFields.some(f => f in body);
+
+    if (hasRestrictedField && !isLabOrAdmin(req.user)) {
+      return res.status(403).json({ success: false, message: "Apenas o Laboratório pode alterar status e setor de laudos." });
+    }
+
+    await this.repository.editLaudo(id, body);
     res.json({ success: true, message: "Laudo atualizado com sucesso." });
   });
   deleteLaudo = asyncHandler(async (req, res) => {
@@ -92,9 +125,18 @@ export default class TestController {
   });
 
   receiveLaudo = asyncHandler(async (req, res) => {
+    if (!isLabOrAdmin(req.user)) {
+      return res.status(403).json({ success: false, message: "Apenas o Laboratório pode confirmar o recebimento de laudos." });
+    }
+
     const { id } = req.params;
     const matricula = req.user?.fk_funcionario_matricula;
     const result = await this.repository.markLaudoAsReceived(id, matricula);
     res.json({ success: true, message: "Laudo marcado como recebido. Prazo iniciado.", data: result });
+  });
+
+  getDelayedTests = asyncHandler(async (_req, res) => {
+    const data = await this.repository.getDelayedTests();
+    res.json({ success: true, data });
   });
 }

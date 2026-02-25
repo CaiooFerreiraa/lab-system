@@ -64,6 +64,7 @@ const NAV_GROUPS = [
     icon: "settings",
     items: [
       { path: "/production/settings", label: "Opções de Produção", icon: "settings_suggest" },
+      { path: "/advanced/settings", label: "Máquinas & Notificações", icon: "settings_input_component" },
     ]
   }
 ];

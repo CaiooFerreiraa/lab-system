@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { testApi, descolagemApi } from "../../services/api";
+import { testApi, descolagemApi, maquinaApi, request } from "../../services/api";
 import Loader from "../common/Loader";
 
 import {
@@ -11,18 +11,24 @@ import {
 export default function TestReport() {
   const [report, setReport] = useState(null);
   const [descolagemReport, setDescolagemReport] = useState(null);
+  const [machinePerformance, setMachinePerformance] = useState([]);
+  const [delayedCount, setDelayedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("charts");
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [res, dRes] = await Promise.all([
+        const [res, dRes, mRes, delRes] = await Promise.all([
           testApi.report(),
-          descolagemApi.report()
+          descolagemApi.report(),
+          maquinaApi.performance(),
+          request("/test/delayed") // Usando request direto se não tiver na testApi ainda
         ]);
         setReport(res.data);
         setDescolagemReport(dRes.data);
+        setMachinePerformance(mRes.data || []);
+        setDelayedCount(delRes.data?.length || 0);
       } catch (err) {
         console.error("Erro ao carregar relatório:", err);
       } finally {
@@ -105,6 +111,16 @@ export default function TestReport() {
             <div className="approval-bar-fill" style={{ width: `${approvalRate}%` }}></div>
           </div>
         </div>
+
+        {delayedCount > 0 && (
+          <div className="summary-card summary-card--danger" style={{ cursor: 'pointer', border: '2px solid #ef4444' }} onClick={() => setActiveTab("machines")}>
+            <span className="material-symbols-outlined summary-card-icon" style={{ animation: 'pulse 1s infinite' }}>warning</span>
+            <div className="summary-card-data">
+              <span className="summary-card-number">{delayedCount}</span>
+              <span className="summary-card-label">Testes CRÍTICOS (Atrasados)</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -114,6 +130,7 @@ export default function TestReport() {
           { key: "brand", label: "Por Marca", icon: "label" },
           { key: "overview", label: "Por Modelo", icon: "category" },
           { key: "type", label: "Por Tipo de Teste", icon: "biotech" },
+          { key: "machines", label: "Performance de Máquinas", icon: "precision_manufacturing" },
           { key: "peeling", label: "Descolagem (Peeling)", icon: "layers" },
           { key: "recent", label: "Testes Recentes", icon: "history" },
         ].map((tab) => (
@@ -141,9 +158,9 @@ export default function TestReport() {
               position: 'relative',
               overflow: 'hidden'
             }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-primary)' }}></div>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-success)' }}></div>
               <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.25rem' }}>
-                <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)', fontSize: '24px' }}>donut_large</span>
+                <span className="material-symbols-outlined" style={{ color: 'var(--accent-success)', fontSize: '24px' }}>donut_large</span>
                 Distribuição por Status
               </h3>
               <ResponsiveContainer width="100%" height={320}>
@@ -164,20 +181,21 @@ export default function TestReport() {
                     animationDuration={1500}
                     stroke="none"
                   >
-                    <Cell fill="hsl(145, 65%, 45%)" />
+                    <Cell fill="#16a34a" />
                     <Cell fill="hsl(0, 75%, 55%)" />
-                    <Cell fill="hsl(215, 80%, 55%)" />
+                    <Cell fill="hsl(38, 90%, 55%)" />
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      background: 'rgba(22, 25, 35, 0.9)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'rgba(18, 20, 30, 0.95)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(22, 163, 74, 0.3)',
                       borderRadius: '12px',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                       padding: '12px 16px'
                     }}
-                    itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '500' }}
+                    itemStyle={{ color: '#e2e8f0', fontSize: '14px', fontWeight: '500' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
                   />
                   <Legend
                     verticalAlign="bottom"
@@ -198,9 +216,9 @@ export default function TestReport() {
               boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
               position: 'relative'
             }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#8b5cf6' }}></div>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-success)' }}></div>
               <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.25rem' }}>
-                <span className="material-symbols-outlined" style={{ color: '#8b5cf6', fontSize: '24px' }}>brand_family</span>
+                <span className="material-symbols-outlined" style={{ color: 'var(--accent-success)', fontSize: '24px' }}>brand_family</span>
                 Performance por Marca
               </h3>
               <ResponsiveContainer width="100%" height={320}>
@@ -222,17 +240,20 @@ export default function TestReport() {
                     tick={{ fill: 'var(--text-secondary)' }}
                   />
                   <Tooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                    cursor={{ fill: 'rgba(255,255,255,0.06)' }}
                     contentStyle={{
-                      background: 'rgba(22, 25, 35, 0.9)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'rgba(18, 20, 30, 0.95)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(22, 163, 74, 0.3)',
                       borderRadius: '12px',
-                      padding: '12px'
+                      padding: '12px 16px',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
                     }}
+                    itemStyle={{ color: '#e2e8f0', fontSize: '13px' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: '600', marginBottom: '6px' }}
                   />
                   <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                  <Bar dataKey="aprovados" name="Aprovados" stackId="a" fill="hsl(145, 65%, 45%)" radius={[0, 0, 0, 0]} barSize={32} />
+                  <Bar dataKey="aprovados" name="Aprovados" stackId="a" fill="#16a34a" radius={[0, 0, 0, 0]} barSize={32} />
                   <Bar dataKey="reprovados" name="Reprovados" stackId="a" fill="hsl(0, 75%, 55%)" radius={[6, 6, 0, 0]} barSize={32} />
                 </BarChart>
               </ResponsiveContainer>
@@ -247,9 +268,9 @@ export default function TestReport() {
               boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
               position: 'relative'
             }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#ec4899' }}></div>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-success)' }}></div>
               <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.25rem' }}>
-                <span className="material-symbols-outlined" style={{ color: '#ec4899', fontSize: '24px' }}>category</span>
+                <span className="material-symbols-outlined" style={{ color: 'var(--accent-success)', fontSize: '24px' }}>category</span>
                 Modelos Mais Testados
               </h3>
               <ResponsiveContainer width="100%" height={320}>
@@ -271,19 +292,22 @@ export default function TestReport() {
                     tick={{ fill: 'var(--text-secondary)' }}
                   />
                   <Tooltip
-                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                    cursor={{ fill: 'rgba(255,255,255,0.06)' }}
                     contentStyle={{
-                      background: 'rgba(22, 25, 35, 0.9)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '12px'
+                      background: 'rgba(18, 20, 30, 0.95)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(22, 163, 74, 0.3)',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
                     }}
+                    itemStyle={{ color: '#e2e8f0', fontSize: '13px' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
                   />
-                  <Bar dataKey="total" name="Testes Realizados" fill="url(#colorGradient)" radius={[8, 8, 0, 0]} barSize={40} />
+                  <Bar dataKey="total" name="Testes Realizados" fill="url(#colorGradientGreen)" radius={[8, 8, 0, 0]} barSize={40} />
                   <defs>
-                    <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#ec4899" stopOpacity={1} />
-                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity={1} />
+                    <linearGradient id="colorGradientGreen" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#15803d" stopOpacity={1} />
                     </linearGradient>
                   </defs>
                 </BarChart>
@@ -498,11 +522,17 @@ export default function TestReport() {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={descolagemReport.byLider.slice(0, 8)}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="lider" fontSize={10} stroke="var(--text-muted)" />
-                  <YAxis fontSize={10} stroke="var(--text-muted)" />
-                  <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '8px' }} />
-                  <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" stackId="a" />
-                  <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" stackId="a" />
+                  <XAxis dataKey="lider" fontSize={10} stroke="var(--text-muted)" tickLine={false} axisLine={false} />
+                  <YAxis fontSize={10} stroke="var(--text-muted)" tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                    contentStyle={{ background: 'rgba(18, 20, 30, 0.95)', backdropFilter: 'blur(12px)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+                    itemStyle={{ color: '#e2e8f0' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '12px' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#16a34a" stackId="a" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="reprovados" name="Reprovados" fill="hsl(0, 75%, 55%)" stackId="a" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -515,11 +545,17 @@ export default function TestReport() {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={descolagemReport.byCoordenador?.slice(0, 8) || []}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="coordenador" fontSize={10} stroke="var(--text-muted)" />
-                  <YAxis fontSize={10} stroke="var(--text-muted)" />
-                  <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '8px' }} />
-                  <Bar dataKey="aprovados" name="Aprovados" fill="#3b82f6" stackId="a" />
-                  <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" stackId="a" />
+                  <XAxis dataKey="coordenador" fontSize={10} stroke="var(--text-muted)" tickLine={false} axisLine={false} />
+                  <YAxis fontSize={10} stroke="var(--text-muted)" tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                    contentStyle={{ background: 'rgba(18, 20, 30, 0.95)', backdropFilter: 'blur(12px)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+                    itemStyle={{ color: '#e2e8f0' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '12px' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#16a34a" stackId="a" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="reprovados" name="Reprovados" fill="hsl(0, 75%, 55%)" stackId="a" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -532,11 +568,17 @@ export default function TestReport() {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={descolagemReport.byEsteira.slice(0, 8)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis type="number" fontSize={10} stroke="var(--text-muted)" />
-                  <YAxis dataKey="esteira" type="category" fontSize={10} stroke="var(--text-muted)" width={80} />
-                  <Tooltip contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '8px' }} />
-                  <Bar dataKey="aprovados" name="Aprovados" fill="#22c55e" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="reprovados" name="Reprovados" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                  <XAxis type="number" fontSize={10} stroke="var(--text-muted)" tickLine={false} axisLine={false} />
+                  <YAxis dataKey="esteira" type="category" fontSize={10} stroke="var(--text-muted)" width={80} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                    contentStyle={{ background: 'rgba(18, 20, 30, 0.95)', backdropFilter: 'blur(12px)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+                    itemStyle={{ color: '#e2e8f0' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '12px' }} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#16a34a" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="reprovados" name="Reprovados" fill="hsl(0, 75%, 55%)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -614,11 +656,107 @@ export default function TestReport() {
                     <td className="text-success">{row.aprovados}</td>
                     <td className="text-danger">{row.reprovados}</td>
                     <td>
-                      <div className="mini-bar"><div className="mini-bar-fill" style={{ width: `${(row.total > 0 ? (row.aprovados / row.total * 100) : 0).toFixed(0)}%`, background: 'var(--accent-primary)' }}></div></div>
+                      <div className="mini-bar"><div className="mini-bar-fill" style={{ width: `${(row.total > 0 ? (row.aprovados / row.total * 100) : 0).toFixed(0)}%`, background: 'var(--accent-success)' }}></div></div>
                       {row.total > 0 ? ((row.aprovados / row.total) * 100).toFixed(1) : "0"}%
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {/* Tab: Performance de Máquinas */}
+      {activeTab === "machines" && (
+        <div className="report-section" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+            <h2 style={{ margin: 0 }}>Produtividade & Tempos de Máquina</h2>
+            <div className="tag tag--info">Análise de tempo real de execução</div>
+          </div>
+
+          <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '24px', marginBottom: '30px' }}>
+            {/* Chart: Total Time per Machine */}
+            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '28px', borderRadius: '20px', border: '1px solid var(--border-color)', boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
+              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span className="material-symbols-outlined" style={{ color: 'var(--accent-success)' }}>timer</span>
+                Horas Totais por Máquina
+              </h3>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={machinePerformance.map(m => ({ ...m, horas: (m.tempo_total_segundos / 3600).toFixed(2) }))}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="maquina" fontSize={11} stroke="var(--text-muted)" />
+                  <YAxis name="Horas" fontSize={11} stroke="var(--text-muted)" tickFormatter={(v) => `${v}h`} />
+                  <Tooltip
+                    contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '12px' }}
+                    formatter={(value) => [`${value} horas`, 'Tempo Total']}
+                  />
+                  <Bar dataKey="horas" fill="var(--accent-success)" radius={[8, 8, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Chart: Efficiency (Tests per machine) */}
+            <div className="chart-card" style={{ background: 'var(--bg-card)', padding: '28px', borderRadius: '20px', border: '1px solid var(--border-color)', boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
+              <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span className="material-symbols-outlined" style={{ color: '#10b981' }}>check_circle</span>
+                Qualidade por Equipamento
+              </h3>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={machinePerformance}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="maquina" fontSize={11} stroke="var(--text-muted)" tickLine={false} axisLine={false} />
+                  <YAxis fontSize={11} stroke="var(--text-muted)" tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+                    contentStyle={{ background: 'rgba(18, 20, 30, 0.95)', backdropFilter: 'blur(12px)', border: '1px solid rgba(22, 163, 74, 0.3)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+                    itemStyle={{ color: '#e2e8f0', fontSize: '13px' }}
+                    labelStyle={{ color: '#94a3b8', fontWeight: '600' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="aprovados" name="Aprovados" stackId="a" fill="#16a34a" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="reprovados" name="Reprovados" stackId="a" fill="hsl(0, 75%, 55%)" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="report-table-wrapper">
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th>Máquina</th>
+                  <th>Total de Testes</th>
+                  <th>Aprovados</th>
+                  <th>Reprovados</th>
+                  <th>Tempo Total</th>
+                  <th>Média / Teste</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {machinePerformance.map((m, i) => {
+                  const hours = Math.floor(m.tempo_total_segundos / 3600);
+                  const mins = Math.floor((m.tempo_total_segundos % 3600) / 60);
+                  const avg = m.total_testes > 0 ? Math.floor(m.tempo_total_segundos / m.total_testes) : 0;
+                  const avgMins = Math.floor(avg / 60);
+                  const avgSecs = avg % 60;
+
+                  return (
+                    <tr key={i}>
+                      <td><strong>{m.maquina}</strong></td>
+                      <td>{m.total_testes}</td>
+                      <td className="text-success">{m.aprovados}</td>
+                      <td className="text-danger">{m.reprovados}</td>
+                      <td>{hours}h {mins}m</td>
+                      <td>{avgMins}m {avgSecs}s</td>
+                      <td>
+                        <span className={`tag ${m.total_testes > 0 ? 'tag--success' : 'tag--muted'}`}>
+                          {m.total_testes > 0 ? 'Ativa' : 'Ociosa'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

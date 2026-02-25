@@ -68,20 +68,24 @@ export default class SectorModel extends BaseModel {
   }
 
   async readAll() {
+    // Uma única query usando LEFT JOIN + JSON_AGG para evitar N+1 queries
     const setores = await this.db`
-      SELECT id, nome, config_perfil, sla_entrega_dias
-      FROM lab_system.setor
-      ORDER BY nome ASC;
+      SELECT
+        s.id,
+        s.nome,
+        s.config_perfil,
+        s.sla_entrega_dias,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT('material_tipo', cp.material_tipo, 'dias_sla', cp.dias_sla)
+          ) FILTER (WHERE cp.id IS NOT NULL),
+          '[]'
+        ) AS slas
+      FROM lab_system.setor s
+      LEFT JOIN lab_system.config_prazo cp ON cp.fk_cod_setor = s.id
+      GROUP BY s.id, s.nome, s.config_perfil, s.sla_entrega_dias
+      ORDER BY s.nome ASC
     `;
-
-    // Anexa os SLAs granulares para cada setor
-    for (let s of setores) {
-      s.slas = await this.db`
-        SELECT material_tipo, dias_sla
-        FROM lab_system.config_prazo
-        WHERE fk_cod_setor = ${s.id}
-      `;
-    }
 
     return setores;
   }

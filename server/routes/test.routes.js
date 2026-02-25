@@ -23,5 +23,6 @@ router.delete("/laudo/:id", controller.deleteLaudo);
 router.post("/laudo/:laudoId/add-test", controller.addTestToLaudo);
 router.post("/laudo/:id/receive", controller.receiveLaudo);
 router.get("/report", controller.report);
+router.get("/delayed", controller.getDelayedTests);
 
 export default router;

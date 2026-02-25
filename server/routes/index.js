@@ -11,6 +11,9 @@ import mscRoutes from "./msc.routes.js";
 import balancaRoutes from "./balanca.routes.js";
 import authRoutes from "./auth.routes.js";
 import productionRoutes from "./production.routes.js";
+import maquinaRoutes from "./maquina.routes.js";
+import notificacaoRoutes from "./notificacao.routes.js";
+import configRoutes from "./config.routes.js";
 
 
 const router = Router();
@@ -45,6 +48,9 @@ router.use("/msc", mscRoutes);
 router.use("/balanca", balancaRoutes);
 router.use("/auth", authRoutes);
 router.use("/production", productionRoutes);
+router.use("/maquina", maquinaRoutes);
+router.use("/notificacao", notificacaoRoutes);
+router.use("/config", configRoutes);
 
 
 export default router;

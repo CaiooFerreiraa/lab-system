@@ -31,3 +31,17 @@ export const authorize = (...roles) => {
     next();
   };
 };
+
+/**
+ * Verifica se o usuário logado é Admin ou pertence ao Laboratório.
+ * Considera role 'admin', setor_nome 'laboratório' ou config_perfil 'laboratório'.
+ * @param {object} user - req.user decodificado do token JWT
+ * @returns {boolean}
+ */
+export function isLabOrAdmin(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const setorNome = user.setor_nome?.toLowerCase().trim();
+  const configPerfil = user.config_perfil?.toLowerCase().trim();
+  return setorNome === 'laboratório' || configPerfil === 'laboratório';
+}

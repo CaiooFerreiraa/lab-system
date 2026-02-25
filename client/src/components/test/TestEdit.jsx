@@ -16,6 +16,8 @@ export default function TestEdit() {
   const [dataFim, setDataFim] = useState("");
   const [status, setStatus] = useState("");
   const [valores, setValores] = useState([]);
+  const [tempoMinutos, setTempoMinutos] = useState(0);
+  const [tempoSegundos, setTempoSegundos] = useState(0);
 
   const MULTI_VALUE_TESTS = {
     'ALONGAMENTO': 3,
@@ -48,6 +50,9 @@ export default function TestEdit() {
           setResultado(t.resultado);
           setDataFim(t.data_fim ? t.data_fim.split('T')[0] : "");
           setStatus(t.status);
+          const totalSec = t.tempo_real_segundos || 0;
+          setTempoMinutos(Math.floor(totalSec / 60));
+          setTempoSegundos(totalSec % 60);
 
           // Carrega specs do modelo
           const modRes = await modelApi.search(t.fk_modelo_cod_modelo);
@@ -70,7 +75,8 @@ export default function TestEdit() {
         cod_teste: id,
         resultado: (resultado && !isNaN(parseFloat(resultado))) ? parseFloat(resultado) : null,
         data_fim: dataFim,
-        status: status // O backend reavalia se resultado mudar
+        status: status,
+        tempo_real_segundos: (parseInt(tempoMinutos || 0) * 60) + parseInt(tempoSegundos || 0)
       });
       setPopup({ show: true, msg: "Teste atualizado com sucesso!" });
     } catch (err) {
@@ -233,6 +239,20 @@ export default function TestEdit() {
             <div className="form-group">
               <label>Data de Finalização</label>
               <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+            </div>
+
+            <div className="form-group">
+              <label>Tempo de Execução (Real)</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <input type="number" className="filter-input" value={tempoMinutos} onChange={e => setTempoMinutos(e.target.value)} min="0" />
+                  <small className="text-secondary">Minutos</small>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <input type="number" className="filter-input" value={tempoSegundos} onChange={e => setTempoSegundos(e.target.value)} min="0" max="59" />
+                  <small className="text-secondary">Segundos</small>
+                </div>
+              </div>
             </div>
 
             <div className="form-actions" style={{ marginTop: 30 }}>

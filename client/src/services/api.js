@@ -11,7 +11,7 @@ function getAuthHeaders() {
 /**
  * Wrapper para fetch com tratamento de erros padronizado e autenticação JWT.
  */
-async function request(url, options = {}) {
+export async function request(url, options = {}) {
   const config = {
     headers: {
       "Content-Type": "application/json",
@@ -202,4 +202,29 @@ export const mscApi = {
   getOne: (id) => request(`/msc/search/${id}`),
   register: (data) => request("/msc/register", { method: "POST", body: JSON.stringify(data) }),
   update: (data) => request("/msc/edit", { method: "PUT", body: JSON.stringify(data) }),
+};
+
+// ============================
+// Maquina API
+// ============================
+export const maquinaApi = {
+  list: () => request("/maquina/read"),
+  getOne: (id) => request(`/maquina/search/${id}`),
+  register: (data) => request("/maquina/register", { method: "POST", body: JSON.stringify(data) }),
+  update: (id, data) => request(`/maquina/edit/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  remove: (id) => request(`/maquina/delete/${id}`, { method: "DELETE" }),
+  listConfigs: (maquinaId) => request(`/maquina/config/${maquinaId}`),
+  listAllConfigs: () => request("/maquina/config/all"),
+  saveConfig: (data) => request("/maquina/config", { method: "POST", body: JSON.stringify(data) }),
+  removeConfig: (id) => request(`/maquina/config/${id}`, { method: "DELETE" }),
+  performance: () => request("/maquina/performance"),
+};
+
+// ============================
+// Notificacao API
+// ============================
+export const notificacaoApi = {
+  listEmails: () => request("/notificacao/emails"),
+  registerEmail: (data) => request("/notificacao/emails", { method: "POST", body: JSON.stringify(data) }),
+  removeEmail: (id) => request(`/notificacao/emails/${id}`, { method: "DELETE" }),
 };

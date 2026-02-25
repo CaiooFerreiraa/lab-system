@@ -44,6 +44,7 @@ import BalancaList from "./components/balanca/BalancaList";
 import BalancaRegister from "./components/balanca/BalancaRegister";
 import UserManagement from "./components/auth/UserManagement";
 import ProductionOptions from "./components/production/ProductionOptions";
+import SettingsPage from "./components/config/SettingsPage";
 
 export default function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -130,6 +131,7 @@ export default function App() {
           {/* Admin: Gerenciamento de Usuários e Produção */}
           <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
           <Route path="/production/settings" element={<ProtectedRoute><ProductionOptions /></ProtectedRoute>} />
+          <Route path="/advanced/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
           {/* Fallback login */}
           <Route path="/login" element={<LoginPage />} />

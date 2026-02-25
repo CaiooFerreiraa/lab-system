@@ -92,6 +92,7 @@ export default class AuthController {
         role: user.role,
         fk_cod_setor: user.fk_cod_setor,
         setor_nome: user.setor_nome,
+        config_perfil: user.config_perfil,
         fk_funcionario_matricula: user.fk_funcionario_matricula
       },
       this.jwtSecret,
@@ -108,6 +109,7 @@ export default class AuthController {
         role: user.role,
         fk_cod_setor: user.fk_cod_setor,
         setor_nome: user.setor_nome,
+        config_perfil: user.config_perfil,
         fk_funcionario_matricula: user.fk_funcionario_matricula
       }
     });

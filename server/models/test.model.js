@@ -83,7 +83,44 @@ export default class TestModel extends BaseModel {
     };
   }
 
-  async readAllLaudos() {
+  /**
+   * Retorna laudos com filtro opcional de setor.
+   * @param {object} options
+   * @param {number|null} options.fk_cod_setor - Se fornecido, filtra apenas laudos deste setor.
+   *                                             Null/undefined = sem filtro (laboratório/admin).
+   */
+  async readAllLaudos({ fk_cod_setor } = {}) {
+    if (fk_cod_setor) {
+      return await this.db`
+        SELECT 
+          l.*,
+          f.nome || ' ' || f.sobrenome as funcionario_nome,
+          m.nome as modelo_nome,
+          s.nome as setor_nome,
+          COALESCE(cp.dias_sla, s.sla_entrega_dias, 4) as setor_sla_dias,
+          mat.tipo as tipo,
+          ds.prioridade as peeling_priority,
+          (SELECT COUNT(*) FROM lab_system.teste WHERE fk_laudo_id = l.id) as total_testes
+        FROM lab_system.laudo l
+        LEFT JOIN lab_system.funcionario f ON l.fk_funcionario_matricula = f.matricula
+        LEFT JOIN lab_system.modelo m ON l.fk_modelo_cod_modelo = m.cod_modelo
+        LEFT JOIN lab_system.setor s ON l.fk_cod_setor = s.id
+        LEFT JOIN lab_system.material mat ON l.fk_material = mat.referencia
+        LEFT JOIN lab_system.config_prazo cp ON (l.fk_cod_setor = cp.fk_cod_setor AND mat.tipo = cp.material_tipo)
+        LEFT JOIN lab_system.descolagem ds ON ds.fk_laudo_id = l.id AND ds.lado = 'Único'
+        WHERE l.fk_cod_setor = ${fk_cod_setor}
+        ORDER BY 
+          CASE l.status_geral
+            WHEN 'Pendente' THEN 1
+            WHEN 'Recebido' THEN 2
+            WHEN 'Em Andamento' THEN 3
+            ELSE 4
+          END ASC,
+          ds.prioridade DESC,
+          l.data_criacao ASC
+      `;
+    }
+
     return await this.db`
       SELECT 
         l.*,
@@ -335,12 +372,14 @@ export default class TestModel extends BaseModel {
         status, resultado, data_inicio, data_fim,
         fk_local_cod_local, fk_tipo_cod_tipo,
         fk_funcionario_matricula, fk_modelo_cod_modelo,
-        fk_cod_espec, fk_cod_setor, fk_material, fk_laudo_id
+        fk_cod_espec, fk_cod_setor, fk_material, fk_laudo_id,
+        fk_maquina_id, tempo_real_segundos
       ) VALUES(
         ${finalStatus}, ${data.resultado}, ${new Date()}, ${data.data_fim || null},
         ${data.fk_local_cod_local || null}, ${fk_tipo_cod_tipo},
         ${fk_funcionario_matricula}, ${data.fk_modelo_cod_modelo},
-        ${specId}, ${fk_cod_setor}, ${fk_material}, ${data.fk_laudo_id || null}
+        ${specId}, ${fk_cod_setor}, ${fk_material}, ${data.fk_laudo_id || null},
+        ${data.fk_maquina_id || null}, ${data.tempo_real_segundos || 0}
       )
     `;
 
@@ -376,7 +415,8 @@ export default class TestModel extends BaseModel {
       SET resultado = ${resultado},
       status = ${finalStatus},
       data_fim = ${data_fim || (isFinalStatus ? new Date() : null)},
-      fk_local_cod_local = ${fk_local_cod_local || null}
+      fk_local_cod_local = ${fk_local_cod_local || null},
+      tempo_real_segundos = ${data.tempo_real_segundos || 0}
       WHERE cod_teste = ${cod_teste}
       `;
   }
@@ -565,5 +605,24 @@ export default class TestModel extends BaseModel {
       byBrand,
       recent
     };
+  }
+
+  async getDelayedTests() {
+    return await this.db`
+      SELECT 
+        t.cod_teste, t.data_inicio, tp.nome as tipo_teste, 
+        m.nome as maquina, s.nome as setor,
+        EXTRACT(EPOCH FROM (now() - t.data_inicio))::int as atraso_segundos,
+        COALESCE(cfg.tempo_estimado_segundos, 86400) as tempo_limite_segundos
+      FROM lab_system.teste t
+      JOIN lab_system.tipo tp ON t.fk_tipo_cod_tipo = tp.cod_tipo
+      LEFT JOIN lab_system.maquina m ON t.fk_maquina_id = m.id
+      LEFT JOIN lab_system.setor s ON t.fk_cod_setor = s.id
+      LEFT JOIN lab_system.maquina_teste_config cfg ON (t.fk_maquina_id = cfg.fk_maquina_id AND t.fk_tipo_cod_tipo = cfg.fk_tipo_cod_tipo)
+      WHERE t.data_fim IS NULL 
+        AND t.status = 'Pendente'
+        AND EXTRACT(EPOCH FROM (now() - t.data_inicio)) > COALESCE(cfg.tempo_estimado_segundos * 1.5, 86400)
+      ORDER BY atraso_segundos DESC
+    `;
   }
 }

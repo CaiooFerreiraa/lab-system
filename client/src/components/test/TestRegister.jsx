@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { testApi, enumApi, employeeApi, modelApi, sectorApi, productApi, mscApi, productionApi } from "../../services/api";
+import { testApi, enumApi, employeeApi, modelApi, sectorApi, productApi, mscApi, productionApi, maquinaApi } from "../../services/api";
 import Loader from "../common/Loader";
 import PopUp from "../common/PopUp";
 import { useAuth } from "../../contexts/AuthContext";
 import { getSectorPermissions, filterTestTypes, filterMaterials } from "../../config/permissions";
 
-const emptyTest = () => ({ fk_tipo_cod_tipo: "", resultado: "", fk_local_cod_local: "", data_fim: "", valores: [] });
+const emptyTest = () => ({ fk_tipo_cod_tipo: "", resultado: "", fk_local_cod_local: "", data_fim: "", valores: [], fk_maquina_id: "" });
 
 export default function TestRegister() {
   const { user } = useAuth();
@@ -21,6 +21,9 @@ export default function TestRegister() {
     'RASGAMENTO': 3,
     'DENSIDADE': 3,
     'MODULO 300%': 3,
+    'ABRASAO DIN': 3,
+    'ABRASAO AKRON': 3,
+    'DUREZA': 5,
     'COMPRESSION SET': 5,
     'ENCOLHIMENTO': 6
   };
@@ -34,6 +37,7 @@ export default function TestRegister() {
   const [sectorList, setSectorList] = useState([]);
   const [materialList, setMaterialList] = useState([]);
   const [mscList, setMscList] = useState([]);
+  const [maquinaList, setMaquinaList] = useState([]);
   const [prodOptions, setProdOptions] = useState({ requisitante: [], lider: [], coordenador: [], gerente: [], esteira: [] });
   const [isDescolagem, setIsDescolagem] = useState(false);
 
@@ -116,14 +120,15 @@ export default function TestRegister() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [typeRes, empRes, modelRes, sectorRes, matRes, mscRes, prodRes] = await Promise.all([
+        const [typeRes, empRes, modelRes, sectorRes, matRes, mscRes, prodRes, maquinaRes] = await Promise.all([
           enumApi.typesTest(),
           employeeApi.list(),
           modelApi.list(),
           sectorApi.list(),
           productApi.list(),
           mscApi.list(),
-          productionApi.listOptions()
+          productionApi.listOptions(),
+          maquinaApi.list()
         ]);
         setTypeTestList(typeRes.data || []);
         setEmployeeList(empRes.data || []);
@@ -131,6 +136,7 @@ export default function TestRegister() {
         setSectorList(sectorRes.data || []);
         setMaterialList(matRes.data || []);
         setMscList(mscRes.data || []);
+        setMaquinaList(maquinaRes.data || []);
 
         const opts = prodRes.data || [];
         const grouped = { requisitante: [], lider: [], coordenador: [], gerente: [], esteira: [] };
@@ -326,6 +332,7 @@ export default function TestRegister() {
           resultado: (t.resultado && !isNaN(parseFloat(t.resultado))) ? parseFloat(t.resultado) : null,
           fk_local_cod_local: t.fk_local_cod_local || null,
           data_fim: t.data_fim || null,
+          fk_maquina_id: t.fk_maquina_id || null
         })),
       };
 
@@ -609,7 +616,7 @@ export default function TestRegister() {
                   {!isDescolagem && (fkModelo || fkMaterial) && (
                     <button type="button" className="btn btn-sm" onClick={handleBateriaCompleta}
                       style={{
-                        background: 'rgba(60, 120, 255, 0.1)',
+                        background: 'rgba(22, 163, 74, 0.1)',
                         color: 'var(--accent-primary)',
                         border: '1px solid var(--accent-primary)',
                         padding: '8px 16px',
@@ -628,7 +635,7 @@ export default function TestRegister() {
                         borderRadius: '20px',
                         padding: '8px 16px',
                         fontWeight: '600',
-                        boxShadow: '0 4px 10px rgba(60, 120, 255, 0.2)'
+                        boxShadow: '0 4px 10px rgba(22, 163, 74, 0.2)'
                       }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '4px', verticalAlign: 'middle' }}>add</span>
                       Adicionar Teste
@@ -663,8 +670,20 @@ export default function TestRegister() {
                         required
                         disabled={isDescolagem}
                       >
-                        <option value="">Selecione</option>
+                        <option value="">Selecione o Teste</option>
                         {allowedTestTypes.map((t) => <option key={t.cod_tipo} value={t.cod_tipo}>{t.nome}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ flex: '1', minWidth: '220px' }}>
+                      <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Máquina / Equipamento</label>
+                      <select
+                        value={teste.fk_maquina_id}
+                        onChange={(e) => updateTest(index, "fk_maquina_id", e.target.value)}
+                        className="filter-input"
+                      >
+                        <option value="">Nenhuma / Manual</option>
+                        {maquinaList.map((m) => <option key={m.id} value={m.id}>{m.nome} ({m.setor_nome || 'Laboratório'})</option>)}
                       </select>
                     </div>
 
@@ -674,61 +693,87 @@ export default function TestRegister() {
                         minWidth: '250px'
                       }}>
                         <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Resultado {typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase() === 'DESCOLAGEM' ? '' : '*'} {MULTI_VALUE_TESTS[typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase()] && "(Média Automática)"}
+                          {(() => {
+                            const tn = typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase();
+                            if (tn === 'DESCOLAGEM') return 'Resultado';
+                            if (MULTI_VALUE_TESTS[tn]) return 'Resultado * (Média Automática)';
+                            return 'Resultado *';
+                          })()}
                         </label>
 
-                        {MULTI_VALUE_TESTS[typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase()] ? (
-                          <div className="test-inputs-container" style={{ marginTop: '10px' }}>
-                            <div className="test-inputs-grid">
-                              {[...Array(MULTI_VALUE_TESTS[typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase()])].map((_, valIdx) => (
-                                <input
-                                  key={valIdx}
-                                  type="number"
-                                  step="any"
-                                  className="filter-input"
-                                  value={teste.valores?.[valIdx] || ""}
-                                  placeholder={`V${valIdx + 1}`}
-                                  style={{ textAlign: 'center' }}
-                                  onChange={(e) => {
-                                    const newVals = [...(teste.valores || [])];
-                                    newVals[valIdx] = e.target.value;
-                                    updateTest(index, "valores", newVals);
-                                  }}
-                                />
-                              ))}
+                        {(() => {
+                          const typeName = typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase();
+                          const numFields = MULTI_VALUE_TESTS[typeName];
+                          const isPercent = PERCENT_TESTS.includes(typeName);
+                          const isDescolagemTest = typeName === 'DESCOLAGEM';
+
+                          // DESCOLAGEM não tem campo de resultado — é representado pelo PDF
+                          if (isDescolagemTest) {
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem', padding: '12px 0' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--accent-primary)' }}>picture_as_pdf</span>
+                                Resultado via PDF (Laudo Técnico)
+                              </div>
+                            );
+                          }
+
+                          if (numFields) {
+                            return (
+                              <div className="test-inputs-container" style={{ marginTop: '10px' }}>
+                                <div className="test-inputs-grid" style={{ gridTemplateColumns: `repeat(${numFields}, 68px)` }}>
+                                  {[...Array(numFields)].map((_, valIdx) => (
+                                    <input
+                                      key={valIdx}
+                                      type="number"
+                                      step="any"
+                                      className="filter-input"
+                                      value={teste.valores?.[valIdx] || ""}
+                                      placeholder={`V${valIdx + 1}`}
+                                      style={{ textAlign: 'center', width: '100%', padding: '10px 4px' }}
+                                      onChange={(e) => {
+                                        const newVals = [...(teste.valores || [])];
+                                        newVals[valIdx] = e.target.value;
+                                        updateTest(index, "valores", newVals);
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                                {isPercent && (
+                                  <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '1.2rem', padding: '0 4px' }}>%</span>
+                                )}
+                                <div className="result-badge-premium">
+                                  {teste.resultado || "---"}
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="number"
+                                step="any"
+                                value={teste.resultado}
+                                className="filter-input"
+                                onChange={(e) => updateTest(index, "resultado", e.target.value)}
+                                required={sectorPerms.canEditTestResults}
+                                placeholder="Valor..."
+                                style={{ width: '140px', fontWeight: '700', fontSize: '1.1rem' }}
+                              />
+                              {isPercent && (
+                                <span style={{
+                                  color: 'var(--accent-primary)',
+                                  fontWeight: 'bold',
+                                  fontSize: '1.1rem',
+                                  background: 'rgba(16, 185, 129, 0.1)',
+                                  padding: '12px 18px',
+                                  borderRadius: '12px',
+                                  border: '1px solid rgba(16, 185, 129, 0.2)'
+                                }}>%</span>
+                              )}
                             </div>
-                            {PERCENT_TESTS.includes(typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase()) && (
-                              <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '1.2rem', padding: '0 10px' }}>%</span>
-                            )}
-                            <div className="result-badge-premium">
-                              {teste.resultado || "---"}
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input
-                              type={typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase() === 'DESCOLAGEM' ? "text" : "number"}
-                              step="any"
-                              value={teste.resultado}
-                              className="filter-input"
-                              onChange={(e) => updateTest(index, "resultado", e.target.value)}
-                              required={sectorPerms.canEditTestResults && typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase() !== 'DESCOLAGEM'}
-                              placeholder={typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase() === 'DESCOLAGEM' ? "Opcional..." : "Valor..."}
-                              style={{ width: '140px', fontWeight: '700', fontSize: '1.1rem' }}
-                            />
-                            {PERCENT_TESTS.includes(typeTestList.find(t => String(t.cod_tipo) === String(teste.fk_tipo_cod_tipo))?.nome?.toUpperCase()) && (
-                              <span style={{
-                                color: 'var(--accent-primary)',
-                                fontWeight: 'bold',
-                                fontSize: '1.1rem',
-                                background: 'rgba(60,120,255,0.1)',
-                                padding: '12px 18px',
-                                borderRadius: '12px',
-                                border: '1px solid rgba(60,120,255,0.2)'
-                              }}>%</span>
-                            )}
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     )}
 

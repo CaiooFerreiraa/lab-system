@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import routes from "./routes/index.js";
 import { errorHandler } from "./middlewares/error-handler.js";
+import automationService from "./utils/automation.js";
 
 dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 
@@ -70,4 +71,5 @@ app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`✅ Servidor rodando em http://localhost:${port}`);
+  automationService.init();
 });

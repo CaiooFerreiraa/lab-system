@@ -21,11 +21,17 @@ export default function LaudoDetails() {
   const canEditResults = perms.canEditTestResults;
 
   const MULTI_VALUE_TESTS = {
+    'ALONG': 3,
     'ALONGAMENTO': 3,
     'TRACAO': 3,
     'RASGAMENTO': 3,
     'DENSIDADE': 3,
     'MODULO 300%': 3,
+    'ABRASAO DIN': 3,
+    'ABRASÃO DIN': 3,
+    'ABRASAO AKRON': 3,
+    'ABRASÃO AKRON': 3,
+    'DUREZA': 5,
     'COMPRESSION SET': 5,
     'ENCOLHIMENTO': 6
   };
@@ -276,28 +282,44 @@ export default function LaudoDetails() {
                     )}
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Aguardando Recebimento</span>
-                    {canEditResults && laudo?.status_geral === 'Pendente' && (
-                      <button
-                        onClick={handleReceiveLaudo}
-                        className="btn btn-primary btn-sm"
-                        style={{ borderRadius: '8px', padding: '10px', background: 'var(--accent-success)', width: '100%', marginTop: '5px' }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check_circle</span>
-                        MARCAR COMO RECEBIDO
-                      </button>
-                    )}
-                  </div>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Aguardando Recebimento</span>
                 )}
               </div>
             </div>
 
             <div className="info-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
               <span className="info-label" style={{ display: 'block', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '8px' }}>Recebido em</span>
-              <span className="info-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
-                {laudo?.data_recebimento ? new Date(laudo.data_recebimento).toLocaleDateString() : '-'}
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span className="info-value" style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                  {laudo?.data_recebimento ? new Date(laudo.data_recebimento).toLocaleDateString() : '-'}
+                </span>
+                {canEditResults && !laudo?.data_recebimento && laudo?.status_geral === 'Pendente' && (
+                  <button
+                    onClick={handleReceiveLaudo}
+                    className="btn btn-sm"
+                    style={{
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      background: 'rgba(34,197,94,0.15)',
+                      border: '1px solid var(--accent-success)',
+                      color: 'var(--accent-success)',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      letterSpacing: '0.5px',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.25)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.15)'; }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
+                    Marcar Recebido
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="info-card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)', position: 'relative' }}>
@@ -324,7 +346,7 @@ export default function LaudoDetails() {
                       color: 'var(--text-primary)',
                       fontSize: '1rem',
                       outline: 'none',
-                      boxShadow: '0 0 0 2px rgba(60, 120, 255, 0.2)'
+                      boxShadow: '0 0 0 2px rgba(22, 163, 74, 0.2)'
                     }}
                   >
                     {sectors.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
@@ -352,7 +374,7 @@ export default function LaudoDetails() {
             borderRadius: '16px',
             border: '1px solid var(--accent-primary)',
             marginBottom: '32px',
-            boxShadow: '0 4px 20px rgba(60, 120, 255, 0.1)'
+            boxShadow: '0 4px 20px rgba(22, 163, 74, 0.1)'
           }}>
             <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-primary)', marginBottom: '20px' }}>
               <span className="material-symbols-outlined">analytics</span>
@@ -478,7 +500,7 @@ export default function LaudoDetails() {
                       if (numFields) {
                         return (
                           <div className="test-inputs-container" style={{ marginTop: '10px' }}>
-                            <div className="test-inputs-grid">
+                            <div className="test-inputs-grid" style={{ gridTemplateColumns: `repeat(${numFields}, 68px)` }}>
                               {[...Array(numFields)].map((_, i) => (
                                 <input
                                   key={i}
@@ -486,7 +508,7 @@ export default function LaudoDetails() {
                                   step="any"
                                   className="filter-input"
                                   placeholder={`V${i + 1}`}
-                                  style={{ textAlign: 'center' }}
+                                  style={{ textAlign: 'center', width: '100%', padding: '10px 4px' }}
                                   value={newTest.valores?.[i] || ""}
                                   onChange={(e) => {
                                     const newVals = [...(newTest.valores || [])];
@@ -502,7 +524,7 @@ export default function LaudoDetails() {
                               ))}
                             </div>
                             {isPercent && (
-                              <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '1.2rem', padding: '0 10px' }}>%</span>
+                              <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '1.2rem', padding: '0 4px' }}>%</span>
                             )}
                             <div className="result-badge-premium">
                               {newTest.resultado || "---"}
@@ -588,11 +610,22 @@ export default function LaudoDetails() {
                           const typeName = t.tipo_nome?.toUpperCase();
                           const numFields = MULTI_VALUE_TESTS[typeName];
                           const isPercent = PERCENT_TESTS.includes(typeName);
+                          const isDescolagemTest = typeName === 'DESCOLAGEM';
+
+                          // DESCOLAGEM: resultado é o PDF anexado na seção acima
+                          if (isDescolagemTest) {
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--accent-primary)' }}>picture_as_pdf</span>
+                                <span>Ver PDFs acima</span>
+                              </div>
+                            );
+                          }
 
                           if (numFields) {
                             return (
                               <div className="test-inputs-container">
-                                <div className="test-inputs-grid">
+                                <div className="test-inputs-grid" style={{ gridTemplateColumns: `repeat(${numFields}, 68px)` }}>
                                   {[...Array(numFields)].map((_, i) => (
                                     <input
                                       key={i}
@@ -601,7 +634,7 @@ export default function LaudoDetails() {
                                       className="filter-input"
                                       placeholder={`V${i + 1}`}
                                       disabled={!canEditResults}
-                                      style={{ textAlign: 'center' }}
+                                      style={{ textAlign: 'center', width: '100%', padding: '10px 4px' }}
                                       onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
                                       onBlur={(e) => e.target.style.borderColor = 'var(--border-color)'}
                                       value={rowValues[t.cod_teste]?.[i] ?? ""}
@@ -625,7 +658,7 @@ export default function LaudoDetails() {
                                     color: 'var(--accent-primary)',
                                     fontWeight: 'bold',
                                     fontSize: '1.2rem',
-                                    padding: '0 10px'
+                                    padding: '0 4px'
                                   }}>%</span>
                                 )}
 
@@ -639,7 +672,7 @@ export default function LaudoDetails() {
                           return (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <input
-                                type={t.tipo_nome?.toUpperCase() === 'DESCOLAGEM' ? "text" : "number"}
+                                type="number"
                                 disabled={!canEditResults}
                                 className="filter-input"
                                 value={changedResults[t.cod_teste]?.resultado ?? t.resultado}
@@ -759,9 +792,13 @@ function FileUploadBox({ label, lado, laudoId, current, onUploaded }) {
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check_circle</span>
             VINCULADO
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Média: <strong>{current.valor_media}</strong> | {current.status_final}
-          </div>
+          {(current.valor_media != null || current.status_final) && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {current.valor_media != null && <>Média: <strong>{current.valor_media}</strong></>}
+              {current.valor_media != null && current.status_final && <span> | </span>}
+              {current.status_final && <span>{current.status_final}</span>}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '5px' }}>
             <a href={`${API_URL}${current.arquivo_path}`} target="_blank" rel="noreferrer" className="tag tag--info" style={{ textDecoration: 'none', cursor: 'pointer', padding: '2px 8px' }}>Ver PDF</a>
             <label style={{ cursor: 'pointer', padding: '2px 8px' }} className="tag tag--muted">
@@ -804,7 +841,7 @@ function FileUploadBox({ label, lado, laudoId, current, onUploaded }) {
         .status-select option { background: #1a1d27; color: #f8fafc; padding: 12px; font-weight: 600; }
         .status-select--pendente { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
         .status-select--recebido { color: #00bcd4; background: rgba(0, 188, 212, 0.1); }
-        .status-select--em-andamento { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .status-select--em-andamento { color: var(--accent-primary); background: rgba(22, 163, 74, 0.1); }
         .status-select--aprovado { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
         .status-select--reprovado { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
         .status-select--concluido { color: #a78bfa; background: rgba(167, 139, 250, 0.1); }

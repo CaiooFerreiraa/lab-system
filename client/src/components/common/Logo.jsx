@@ -9,11 +9,11 @@ export default function Logo({ size = 32, className = "" }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      style={{ filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.4))' }}
+      style={{ filter: 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.4))' }}
     >
       <defs>
         <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#3b82f6" />
+          <stop offset="0%" stopColor="#16a34a" />
           <stop offset="100%" stopColor="#10b981" />
         </linearGradient>
         <filter id="glow">
