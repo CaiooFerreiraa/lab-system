@@ -616,7 +616,7 @@ export default function TestRegister() {
                   {!isDescolagem && (fkModelo || fkMaterial) && (
                     <button type="button" className="btn btn-sm" onClick={handleBateriaCompleta}
                       style={{
-                        background: 'rgba(22, 163, 74, 0.1)',
+                        background: 'rgba(239, 68, 68, 0.1)',
                         color: 'var(--accent-primary)',
                         border: '1px solid var(--accent-primary)',
                         padding: '8px 16px',
@@ -635,7 +635,7 @@ export default function TestRegister() {
                         borderRadius: '20px',
                         padding: '8px 16px',
                         fontWeight: '600',
-                        boxShadow: '0 4px 10px rgba(22, 163, 74, 0.2)'
+                        boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)'
                       }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '4px', verticalAlign: 'middle' }}>add</span>
                       Adicionar Teste
@@ -765,10 +765,10 @@ export default function TestRegister() {
                                   color: 'var(--accent-primary)',
                                   fontWeight: 'bold',
                                   fontSize: '1.1rem',
-                                  background: 'rgba(16, 185, 129, 0.1)',
+                                  background: 'rgba(239, 68, 68, 0.1)',
                                   padding: '12px 18px',
                                   borderRadius: '12px',
-                                  border: '1px solid rgba(16, 185, 129, 0.2)'
+                                  border: '1px solid rgba(239, 68, 68, 0.2)'
                                 }}>%</span>
                               )}
                             </div>

@@ -92,9 +92,9 @@ export default function DescolagemReport() {
           position: 'relative',
           boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
         }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#16a34a' }}></div>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--accent-success)' }}></div>
           <h3 style={{ marginBottom: '24px', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span className="material-symbols-outlined" style={{ color: '#16a34a' }}>group</span>
+            <span className="material-symbols-outlined" style={{ color: 'var(--accent-success)' }}>group</span>
             Performance por Líder
           </h3>
           <ResponsiveContainer width="100%" height={300}>

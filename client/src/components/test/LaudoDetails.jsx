@@ -346,7 +346,7 @@ export default function LaudoDetails() {
                       color: 'var(--text-primary)',
                       fontSize: '1rem',
                       outline: 'none',
-                      boxShadow: '0 0 0 2px rgba(22, 163, 74, 0.2)'
+                      boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.2)'
                     }}
                   >
                     {sectors.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
@@ -374,7 +374,7 @@ export default function LaudoDetails() {
             borderRadius: '16px',
             border: '1px solid var(--accent-primary)',
             marginBottom: '32px',
-            boxShadow: '0 4px 20px rgba(22, 163, 74, 0.1)'
+            boxShadow: '0 4px 20px rgba(239, 68, 68, 0.1)'
           }}>
             <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-primary)', marginBottom: '20px' }}>
               <span className="material-symbols-outlined">analytics</span>

@@ -690,7 +690,7 @@ export default function TestReport() {
                     contentStyle={{ background: 'rgba(22, 25, 35, 0.9)', border: 'none', borderRadius: '12px' }}
                     formatter={(value) => [`${value} horas`, 'Tempo Total']}
                   />
-                  <Bar dataKey="horas" fill="var(--accent-success)" radius={[8, 8, 0, 0]} barSize={40} />
+                  <Bar dataKey="horas" fill="#16a34a" radius={[8, 8, 0, 0]} barSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
